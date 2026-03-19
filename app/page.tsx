@@ -12,15 +12,20 @@ export default function Home() {
         alignItems: "center",
         justifyContent: "center",
         gap: "2rem",
+        padding: "1rem",
       }}
     >
       {/* LOGO */}
       <Image
-        src="/images/logo_claro.png"
+        src="/images/logo_oscuro.png"
         alt="Caleo"
         width={400}
         height={300}
         priority
+        style={{
+          width: "clamp(200px, 50vw, 400px)",
+          height: "auto",
+        }}
       />
 
       {/* ESLOGAN */}
@@ -29,7 +34,7 @@ export default function Home() {
           color: "#8C7B6B",
           fontFamily: "Georgia, serif",
           fontStyle: "italic",
-          fontSize: "1.4rem",
+          fontSize: "clamp(1rem, 3vw, 1.4rem)",
           textAlign: "center",
           maxWidth: "500px",
           padding: "0 1rem",
@@ -39,7 +44,16 @@ export default function Home() {
       </p>
 
       {/* BOTONES */}
-      <div style={{ display: "flex", gap: "2.5rem", marginTop: "1rem" }}>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "row",
+          flexWrap: "wrap",
+          gap: "1.5rem",
+          marginTop: "1rem",
+          justifyContent: "center",
+        }}
+      >
         <Link href="/login">
           <button className="btn-primary">Iniciar sesión</button>
         </Link>

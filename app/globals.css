@@ -1,6 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 :root {
   --bg: #F5F0E8;
@@ -23,42 +21,40 @@
 
   body {
     background-color: var(--bg);
-    color: var(--dark);
+    color: var(--primary);
   }
 }
 
-@layer components {
-  .btn-primary {
-    background-color: var(--primary);
-    color: var(--white);
-    padding: 12px 52px;
-    border-radius: 12px;
-    border: 2px solid var(--primary);
-    font-size: 1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
+.btn-primary {
+  background-color: var(--primary);
+  color: var(--white);
+  padding: 12px 52px;
+  border-radius: 12px;
+  border: 2px solid var(--primary);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
 
-  .btn-primary:hover {
-    background-color: var(--bg);
-    color: var(--primary);
-  }
+.btn-primary:hover {
+  background-color: var(--bg);
+  color: var(--primary);
+}
 
-  .btn-secondary {
-    background-color: var(--primary);
-    color: var(--white);
-    padding: 12px 52px;
-    border-radius: 12px;
-    border: 2px solid var(--primary);
-    font-size: 1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
+.btn-secondary {
+  background-color: var(--primary);
+  color: var(--white);
+  padding: 12px 52px;
+  border-radius: 12px;
+  border: 2px solid var(--primary);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
 
-  .btn-secondary:hover {
-    background-color: var(--bg);
-    color: var(--primary);
-  }
+.btn-secondary:hover {
+  background-color: var(--bg);
+  color: var(--primary);
 }
