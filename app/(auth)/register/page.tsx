@@ -3,8 +3,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { register } from "@/lib/auth";
 
 export default function RegisterPage() {
+  const router = useRouter();
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -16,13 +19,18 @@ export default function RegisterPage() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (form.password !== form.confirmPassword) {
       alert("Las contraseñas no coinciden");
       return;
     }
-    console.log("Registro:", form);
+    try {
+      await register(form.name, form.email, form.password);
+      router.push("/login");
+    } catch (error: any) {
+      alert(error.message);
+    }
   };
 
   const inputStyle: React.CSSProperties = {

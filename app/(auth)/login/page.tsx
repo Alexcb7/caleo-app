@@ -3,8 +3,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { login } from "@/lib/auth";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [form, setForm] = useState({
     email: "",
     password: "",
@@ -14,9 +17,14 @@ export default function LoginPage() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Login:", form);
+    try {
+      await login(form.email, form.password);
+      router.push("/home");
+    } catch (error: any) {
+      alert(error.message);
+    }
   };
 
   const inputStyle: React.CSSProperties = {
@@ -139,7 +147,6 @@ export default function LoginPage() {
             Regístrate
           </Link>
         </p>
-
       </div>
     </main>
   );
