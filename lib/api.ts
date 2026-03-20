@@ -21,3 +21,13 @@ export async function getProduct(id: number) {
   if (!res.ok) throw new Error("Error obteniendo producto");
   return await res.json();
 }
+
+export async function compareProducts(items: any[], supermarket_ids: number[] = []) {
+  const res = await fetch(`${API_URL}/comparador/compare`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ items, supermarket_ids }),
+  });
+  if (!res.ok) throw new Error("Error en el comparador");
+  return await res.json();
+}

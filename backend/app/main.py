@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.db.connection import engine
-from app.api import auth, products
+from app.api import auth, products, comparador
 from sqlalchemy import text
 
 app = FastAPI(title="Caleo API", version="1.0.0")
@@ -17,6 +17,7 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(products.router)
+app.include_router(comparador.router)
 
 @app.get("/")
 def root():

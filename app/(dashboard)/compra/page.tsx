@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { searchProducts, getCategories } from "@/lib/api";
+import { searchProducts, getCategories, compareProducts } from "@/lib/api";
 
 export default function CompraPage() {
   const [query, setQuery] = useState("");
@@ -10,6 +10,8 @@ export default function CompraPage() {
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [cart, setCart] = useState<any[]>([]);
+  const [resultado, setResultado] = useState<any>(null);
+  const [comparando, setComparando] = useState(false);
 
   useEffect(() => {
     getCategories().then(setCategories);
@@ -28,16 +30,15 @@ export default function CompraPage() {
     }
   };
 
-  const addToCart = (product: any) => {
-    const existing = cart.find((p) => p.id === product.id);
-    if (existing) {
-      setCart(cart.map((p) => p.id === product.id ? { ...p, quantity: p.quantity + 1 } : p));
-    } else {
-      setCart([...cart, { ...product, quantity: 1 }]);
-    }
-    setProducts([]);
-    setQuery("");
-  };
+ const addToCart = (product: any) => {
+  const existing = cart.find((p) => p.id === product.id);
+  if (existing) {
+    setCart(cart.map((p) => p.id === product.id ? { ...p, quantity: p.quantity + 1 } : p));
+  } else {
+    setCart([...cart, { ...product, quantity: 1 }]);
+  }
+  setProducts([]);
+};
 
   const removeFromCart = (id: number) => {
     setCart(cart.filter((p) => p.id !== id));
@@ -45,6 +46,23 @@ export default function CompraPage() {
 
   const updateQuantity = (id: number, delta: number) => {
     setCart(cart.map((p) => p.id === id ? { ...p, quantity: Math.max(1, p.quantity + delta) } : p));
+  };
+
+  const handleCompare = async () => {
+    setComparando(true);
+    try {
+      const cartItems = cart.map((p) => ({
+        product_id: p.id,
+        quantity: p.quantity,
+        name: p.name,
+      }));
+      const res = await compareProducts(cartItems);
+      setResultado(res);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setComparando(false);
+    }
   };
 
   return (
@@ -196,10 +214,84 @@ export default function CompraPage() {
           ))}
 
           <div style={{ marginTop: "16px", display: "flex", justifyContent: "flex-end" }}>
-            <button className="btn-primary" style={{ padding: "12px 32px" }}>
-              Finalizar y comparar →
+            <button
+              className="btn-primary"
+              style={{ padding: "12px 32px" }}
+              onClick={handleCompare}
+            >
+              {comparando ? "Comparando..." : "Finalizar y comparar →"}
             </button>
           </div>
+        </div>
+      )}
+
+      {/* RESULTADO COMPARADOR */}
+      {resultado && (
+        <div style={{ backgroundColor: "#FFFFFF", borderRadius: "14px", padding: "22px", border: "1px solid #E8DFD0" }}>
+          <h2 style={{ fontFamily: "Georgia, serif", fontSize: "1.4rem", color: "#3D2B1F", marginBottom: "16px" }}>
+            🏆 Resultado del comparador
+          </h2>
+
+          {/* RANKING */}
+          <div style={{ marginBottom: "24px" }}>
+            <h3 style={{ fontSize: "1rem", fontWeight: "600", color: "#3D2B1F", marginBottom: "12px" }}>
+              Ranking por precio total
+            </h3>
+            {resultado.ranking_supermercados.map((s: any, i: number) => (
+              <div key={s.supermarket_id} style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                padding: "12px",
+                backgroundColor: i === 0 ? "rgba(107,122,58,0.1)" : "#F5F0E8",
+                borderRadius: "10px",
+                marginBottom: "8px",
+                border: i === 0 ? "1px solid #6B7A3A" : "1px solid #E8DFD0",
+              }}>
+                <span style={{ fontSize: "1.4rem" }}>
+                  {i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉"}
+                </span>
+                <span style={{ flex: 1, fontWeight: "600", color: "#3D2B1F" }}>
+                  {s.supermarket}
+                </span>
+                <span style={{ fontFamily: "Georgia, serif", fontSize: "1.2rem", fontWeight: "700", color: i === 0 ? "#6B7A3A" : "#3D2B1F" }}>
+                  {s.total.toFixed(2)}€
+                </span>
+              </div>
+            ))}
+            {resultado.ahorro_maximo > 0 && (
+              <div style={{ marginTop: "8px", padding: "10px", backgroundColor: "rgba(107,122,58,0.1)", borderRadius: "10px", textAlign: "center" }}>
+                <span style={{ color: "#6B7A3A", fontWeight: "600", fontSize: "0.95rem" }}>
+                  💰 Ahorro máximo: {resultado.ahorro_maximo.toFixed(2)}€
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* DESGLOSE */}
+          <h3 style={{ fontSize: "1rem", fontWeight: "600", color: "#3D2B1F", marginBottom: "12px" }}>
+            Desglose por producto
+          </h3>
+          {resultado.productos.map((p: any) => (
+            <div key={p.product_id} style={{ padding: "12px 0", borderBottom: "1px solid #E8DFD0" }}>
+              <div style={{ fontWeight: "600", color: "#3D2B1F", marginBottom: "8px" }}>
+                {p.name} x{p.quantity}
+              </div>
+              {p.precios.map((precio: any, i: number) => (
+                <div key={`${p.product_id}-${precio.supermarket_id}-${i}`} style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  fontSize: "13px",
+                  color: i === 0 ? "#6B7A3A" : "#8C7B6B",
+                  fontWeight: i === 0 ? "600" : "400",
+                  padding: "2px 0",
+                }}>
+                  <span>{i === 0 ? "✅" : "  "} {precio.supermarket}</span>
+                  <span>{precio.price.toFixed(2)}€</span>
+                </div>
+              ))}
+            </div>
+          ))}
         </div>
       )}
 
