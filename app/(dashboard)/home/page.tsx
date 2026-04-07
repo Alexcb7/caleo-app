@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
 import { ShoppingCart, TrendingDown, Tag, List, ArrowRight, Flame, TrendingUp } from "lucide-react";
 import Link from "next/link";
@@ -19,6 +19,26 @@ type Oferta = { id: number; product_name: string; image_url: string; supermarket
 type Period = "dia" | "semana" | "mes" | "año";
 
 const SM_COLORS = ["#6B7A3A", "#B8A06A", "#C17F3A", "#3D2B1F"];
+
+const DAY_ORDER = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+const MONTH_ORDER = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+
+function sortChartData(data: { label: string; gasto: number }[], period: Period) {
+  const copy = [...data];
+  if (period === "semana") return copy.sort((a, b) => DAY_ORDER.indexOf(a.label) - DAY_ORDER.indexOf(b.label));
+  if (period === "año") return copy.sort((a, b) => MONTH_ORDER.indexOf(a.label) - MONTH_ORDER.indexOf(b.label));
+  // "mes" (Sem 1, Sem 2…) y "dia" (08:00, 14h…): ordenar por el número que contiene la etiqueta
+  return copy.sort((a, b) => (parseInt(a.label.replace(/\D/g, "")) || 0) - (parseInt(b.label.replace(/\D/g, "")) || 0));
+}
+
+function isCurrentLabel(label: string, period: Period): boolean {
+  const now = new Date();
+  if (period === "semana") return label === DAY_ORDER[(now.getDay() + 6) % 7];
+  if (period === "año") return label === MONTH_ORDER[now.getMonth()];
+  if (period === "mes") return label === "Sem 4"; // Sem 4 = esta semana (el backend siempre la pone última)
+  if (period === "dia") return (parseInt(label.replace(/\D/g, "")) || 0) === now.getHours();
+  return false;
+}
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
@@ -41,6 +61,7 @@ export default function HomePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [period, setPeriod] = useState<Period>("semana");
   const [historyLoading, setHistoryLoading] = useState(false);
+  const historyCache = useRef<Partial<Record<Period, History>>>({});
 
   useEffect(() => {
     const stored = localStorage.getItem("user");
@@ -68,10 +89,17 @@ export default function HomePage() {
   };
 
   const fetchHistory = async (userId: number, p: Period) => {
+    if (historyCache.current[p]) {
+      setHistory(historyCache.current[p]!);
+      return;
+    }
     setHistoryLoading(true);
     try {
       const res = await fetch(`${API_URL}/stats/user/${userId}/history?period=${p}`);
-      setHistory(await res.json());
+      const raw = await res.json();
+      const data = { ...raw, chart_data: sortChartData(raw.chart_data || [], p) };
+      historyCache.current[p] = data;
+      setHistory(data);
     } catch {}
     setHistoryLoading(false);
   };
@@ -162,8 +190,12 @@ export default function HomePage() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#F5F0E8" vertical={false} />
                 <XAxis dataKey="label" tick={{ fontSize: 11, fontFamily: "system-ui", fill: "#8C7B6B" }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 11, fontFamily: "system-ui", fill: "#8C7B6B" }} axisLine={false} tickLine={false} tickFormatter={v => `${v}€`} />
-                <Tooltip content={<CustomTooltip />} cursor={{ fill: "#F5F0E8" }} />
-                <Bar dataKey="gasto" fill="#6B7A3A" radius={[6, 6, 0, 0]} />
+                <Tooltip content={<CustomTooltip />} cursor={{ fill: "#F5F0E8" }} isAnimationActive={false} />
+                <Bar dataKey="gasto" radius={[6, 6, 0, 0]}>
+                  {(history?.chart_data || []).map((entry, i) => (
+                    <Cell key={i} fill={isCurrentLabel(entry.label, period) ? "#C17F3A" : "#6B7A3A"} />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -184,7 +216,7 @@ export default function HomePage() {
                 <Pie data={smPieData} cx="50%" cy="50%" innerRadius={38} outerRadius={62} paddingAngle={3} dataKey="value">
                   {smPieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
                 </Pie>
-                <Tooltip formatter={(v: any) => [`${v}€`, ""]} contentStyle={{ borderRadius: 10, border: "1.5px solid #E8DFD0", fontFamily: "system-ui", fontSize: 12 }} />
+                <Tooltip formatter={(v: any) => [`${v}€`, ""]} contentStyle={{ borderRadius: 10, border: "1.5px solid #E8DFD0", fontFamily: "system-ui", fontSize: 12 }} isAnimationActive={false} />
               </PieChart>
             </ResponsiveContainer>
           )}
@@ -225,8 +257,15 @@ export default function HomePage() {
               <CartesianGrid strokeDasharray="3 3" stroke="#F5F0E8" vertical={false} />
               <XAxis dataKey="label" tick={{ fontSize: 10, fontFamily: "system-ui", fill: "#8C7B6B" }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 10, fontFamily: "system-ui", fill: "#8C7B6B" }} axisLine={false} tickLine={false} tickFormatter={v => `${v}€`} />
-              <Tooltip content={<CustomTooltip />} />
-              <Line type="monotone" dataKey="gasto" stroke="#6B7A3A" strokeWidth={2.5} dot={{ fill: "#6B7A3A", r: 4 }} activeDot={{ r: 6 }} />
+              <Tooltip content={<CustomTooltip />} isAnimationActive={false} />
+              <Line type="monotone" dataKey="gasto" stroke="#6B7A3A" strokeWidth={2.5}
+                dot={(props: any) => {
+                  const { cx, cy, payload } = props;
+                  const current = isCurrentLabel(payload.label, period);
+                  return <circle key={payload.label} cx={cx} cy={cy} r={current ? 6 : 3} fill={current ? "#C17F3A" : "#6B7A3A"} stroke="white" strokeWidth={current ? 2 : 0} />;
+                }}
+                activeDot={{ r: 6, fill: "#6B7A3A" }}
+              />
             </LineChart>
           </ResponsiveContainer>
         )}
