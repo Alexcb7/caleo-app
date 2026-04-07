@@ -55,26 +55,27 @@ export default function RegisterPage() {
       >
         <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 30% 50%, rgba(107,122,58,0.25) 0%, transparent 60%)" }} />
         <div style={{ position: "relative", zIndex: 1 }}>
-          {/* Logo + nombre */}
-          <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 48 }}>
-            <img src="/images/oscuropng.png" alt="Caleo" style={{ height: 60, width: "auto" }} />
-            <span style={{ fontFamily: "'Georgia', serif", fontStyle: "italic", fontSize: "2rem", color: "#B8A06A", fontWeight: 700, letterSpacing: "0.02em" }}>Caleo</span>
+          {/* Logo */}
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 40, marginTop: -40 }}>
+            <img src="/images/oscuropng.png" alt="Caleo" style={{ height: 110, width: "auto" }} />
           </div>
-          <h1 style={{ fontSize: "2.2rem", fontWeight: 700, color: "#F5F0E8", lineHeight: 1.2, margin: "0 0 16px", fontFamily: "Georgia, serif" }}>
+          <h1 style={{ fontSize: "2.2rem", fontWeight: 700, color: "#F5F0E8", lineHeight: 1.2, margin: "0 0 16px", fontFamily: "Georgia, serif", textAlign: "center" }}>
             Tu comparador de supermercados.
           </h1>
-          <p style={{ fontSize: "0.95rem", color: "#8C7B6B", lineHeight: 1.7, margin: "0 0 36px", fontFamily: "system-ui" }}>
-            Crea tu cuenta gratis y empieza a ahorrar comparando precios entre Mercadona y DIA.
+          <p style={{ fontSize: "0.95rem", color: "#8C7B6B", lineHeight: 1.7, margin: "0 0 36px", fontFamily: "system-ui", textAlign: "center" }}>
+            Crea tu cuenta gratis y empieza a ahorrar comparando precios entre supermercados.
           </p>
-          {/* Perks más grandes y centrados */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 18, alignItems: "flex-start" }}>
-            {perks.map((perk, i) => (
-              <motion.div key={i} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4 + i * 0.1 }}
-                style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                <span style={{ width: 28, height: 28, background: "#6B7A3A", color: "white", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.85rem", fontWeight: 700, flexShrink: 0 }}>✓</span>
-                <span style={{ fontSize: "1rem", color: "#F5F0E8", fontFamily: "system-ui", opacity: 0.9 }}>{perk}</span>
-              </motion.div>
-            ))}
+          {/* Perks centrados */}
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              {perks.map((perk, i) => (
+                <motion.div key={i} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4 + i * 0.1 }}
+                  style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                  <span style={{ width: 28, height: 28, background: "#6B7A3A", color: "white", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.85rem", fontWeight: 700, flexShrink: 0 }}>✓</span>
+                  <span style={{ fontSize: "1rem", color: "#F5F0E8", fontFamily: "system-ui", opacity: 0.9 }}>{perk}</span>
+                </motion.div>
+              ))}
+            </div>
           </div>
         </div>
       </motion.div>
@@ -88,9 +89,8 @@ export default function RegisterPage() {
           style={{ width: "100%", maxWidth: 420, background: "white", borderRadius: 24, padding: "40px 36px", boxShadow: "0 4px 40px rgba(61,43,31,0.1)", border: "1px solid #E8DFD0" }}
         >
           {/* Logo mobile */}
-          <div className="lg:hidden" style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 10, marginBottom: 28 }}>
-            <img src="/images/claropng.png" alt="Caleo" style={{ height: 44, width: "auto" }} />
-            <span style={{ fontFamily: "'Georgia', serif", fontStyle: "italic", fontSize: "1.6rem", color: "#B8A06A", fontWeight: 700 }}>Caleo</span>
+          <div className="lg:hidden" style={{ display: "flex", justifyContent: "center", marginBottom: 28 }}>
+            <img src="/images/claropng.png" alt="Caleo" style={{ height: 70, width: "auto" }} />
           </div>
 
           <motion.h2 initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}

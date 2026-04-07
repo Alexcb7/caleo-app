@@ -7,7 +7,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <TooltipProvider>
       <SidebarProvider>
         <AppSidebar />
-        <SidebarInset>
+        <SidebarInset style={{ minWidth: 0, overflowX: "hidden" }}>
           {children}
         </SidebarInset>
       </SidebarProvider>

@@ -8,6 +8,7 @@ router = APIRouter(prefix="/products", tags=["products"])
 
 @router.get("/search")
 def search_products(q: str = Query(""), category_id: Optional[int] = None, db: Session = Depends(get_db)):
+    
     query = db.query(Product)
     if q:
         query = query.filter(Product.name.ilike(f"%{q}%"))
@@ -19,13 +20,14 @@ def search_products(q: str = Query(""), category_id: Optional[int] = None, db: S
         sp = db.query(SupermarketProduct).filter(SupermarketProduct.product_id == p.id).order_by(SupermarketProduct.price).first()
         sm = db.query(Supermarket).filter(Supermarket.id == sp.supermarket_id).first() if sp else None
         result.append({
-            "id": p.id, "name": p.name, "brand": p.brand,
-            "unit_type": p.unit_type, "image_url": p.image_url,
-            "category_id": p.category_id,
-            "min_price": float(sp.price) if sp else None,
-            "supermarket": sm.name if sm else None,
-            "is_offer": sp.is_offer if sp else False,
-        })
+        "id": p.id, "name": p.name, "brand": p.brand,
+        "unit_type": p.unit_type, "image_url": p.image_url,
+        "category_id": p.category_id,
+        "min_price": float(sp.price) if sp else None,
+        "supermarket": sm.name if sm else None,
+        "is_offer": sp.is_offer if sp else False,
+        "supermarkets_count": db.query(SupermarketProduct).filter(SupermarketProduct.product_id == p.id).count(),
+    })
     return result
 
 @router.get("/categories")

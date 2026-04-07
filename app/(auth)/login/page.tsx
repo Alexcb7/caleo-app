@@ -53,19 +53,18 @@ export default function LoginPage() {
       >
         <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 30% 50%, rgba(107,122,58,0.25) 0%, transparent 60%)" }} />
         <div style={{ position: "relative", zIndex: 1 }}>
-          {/* Logo + nombre */}
-          <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 48 }}>
-            <img src="/images/oscuropng.png" alt="Caleo" style={{ height: 60, width: "auto" }} />
-            <span style={{ fontFamily: "'Georgia', serif", fontStyle: "italic", fontSize: "2rem", color: "#B8A06A", fontWeight: 700, letterSpacing: "0.02em" }}>Caleo</span>
+          {/* Logo */}
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 32 }}>
+            <img src="/images/oscuropng.png" alt="Caleo" style={{ height: 150, width: "auto" }} />
           </div>
           <h1 style={{ fontSize: "2.2rem", fontWeight: 700, color: "#F5F0E8", lineHeight: 1.2, margin: "0 0 16px", fontFamily: "Georgia, serif" }}>
-            Compra más inteligente.<br />Gasta menos.
+            No se trata de gastar menos,<br />Se trata de gastar bien.
           </h1>
           <p style={{ fontSize: "0.95rem", color: "#8C7B6B", lineHeight: 1.7, margin: "0 0 48px", fontFamily: "system-ui, sans-serif" }}>
-            Compara precios entre Mercadona y DIA en tiempo real. Encuentra siempre la mejor oferta.
+            Compara precios entre supermercados en tiempo real y encuentra siempre las mejores ofertas.
           </p>
           <div style={{ display: "flex", alignItems: "center", gap: 28 }}>
-            {[{ num: "+7.500", label: "Productos" }, { num: "2", label: "Supermercados" }, { num: "96%", label: "Cruce" }].map((s, i) => (
+            {[{ num: "+8.000", label: "Productos" }, { num: "30%", label: "ahorro" }, { num: "26", label: "Categorias" }].map((s, i) => (
               <div key={i} style={{ display: "flex", alignItems: "center", gap: 28 }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                   <span style={{ fontSize: "1.5rem", fontWeight: 700, color: "#B8A06A", fontFamily: "Georgia, serif" }}>{s.num}</span>
@@ -87,9 +86,8 @@ export default function LoginPage() {
           style={{ width: "100%", maxWidth: 420, background: "white", borderRadius: 24, padding: "40px 36px", boxShadow: "0 4px 40px rgba(61,43,31,0.1), 0 1px 4px rgba(61,43,31,0.06)", border: "1px solid #E8DFD0" }}
         >
           {/* Logo mobile */}
-          <div className="lg:hidden" style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 10, marginBottom: 28 }}>
-            <img src="/images/claropng.png" alt="Caleo" style={{ height: 44, width: "auto" }} />
-            <span style={{ fontFamily: "'Georgia', serif", fontStyle: "italic", fontSize: "1.6rem", color: "#B8A06A", fontWeight: 700 }}>Caleo</span>
+          <div className="lg:hidden" style={{ display: "flex", justifyContent: "center", marginBottom: 28 }}>
+            <img src="/images/claropng.png" alt="Caleo" style={{ height: 70, width: "auto" }} />
           </div>
 
           <motion.h2
