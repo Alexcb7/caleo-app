@@ -14,6 +14,7 @@ import {
 
 export function NavSecondary({
   items,
+  onNavigate,
   ...props
 }: {
   items: {
@@ -21,6 +22,7 @@ export function NavSecondary({
     url: string
     icon: LucideIcon
   }[]
+  onNavigate?: (url: string) => boolean
 } & React.ComponentPropsWithoutRef<typeof SidebarGroup>) {
   const pathname = usePathname()
 
@@ -33,10 +35,20 @@ export function NavSecondary({
             return (
               <SidebarMenuItem key={item.title}>
                 <SidebarMenuButton asChild size="sm" isActive={active}>
-                  <Link href={item.url}>
-                    <item.icon />
-                    <span>{item.title}</span>
-                  </Link>
+                  {onNavigate ? (
+                    <button
+                      onClick={() => onNavigate(item.url)}
+                      style={{ background: "none", border: "none", cursor: "pointer", width: "100%", display: "flex", alignItems: "center", gap: 8 }}
+                    >
+                      <item.icon />
+                      <span>{item.title}</span>
+                    </button>
+                  ) : (
+                    <Link href={item.url}>
+                      <item.icon />
+                      <span>{item.title}</span>
+                    </Link>
+                  )}
                 </SidebarMenuButton>
               </SidebarMenuItem>
             )

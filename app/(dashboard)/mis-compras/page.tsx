@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ShoppingCart, Check, Trash2, ChevronRight, X, Home, ListPlus, Leaf, Wheat, Droplets, PawPrint, Wine, Coffee, Beef, Snowflake, LucideIcon } from "lucide-react";
+import { ShoppingCart, Check, Trash2, ChevronRight, X, Home, ListPlus, Leaf, Wheat, Droplets, PawPrint, Wine, Coffee, Beef, Snowflake, Pencil, LucideIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Loading from "../loading";
 
@@ -52,11 +52,16 @@ export default function MisComprasPage() {
   const [completing, setCompleting] = useState<number | null>(null);
   const [deleting, setDeleting] = useState<number | null>(null);
   const [filter, setFilter] = useState<"all" | "pending" | "completed">("all");
+  const [timePeriod, setTimePeriod] = useState<"all" | "today" | "week" | "month" | "year">("all");
   const [saveAsListOpen, setSaveAsListOpen] = useState(false);
   const [saveAsListPurchase, setSaveAsListPurchase] = useState<Purchase | null>(null);
   const [listFormName, setListFormName] = useState("");
   const [listFormEmoji, setListFormEmoji] = useState("🛒");
   const [listSaving, setListSaving] = useState(false);
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [renamePurchase, setRenamePurchase] = useState<Purchase | null>(null);
+  const [renameName, setRenameName] = useState("");
+  const [renaming, setRenaming] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem("user");
@@ -109,6 +114,31 @@ export default function MisComprasPage() {
     setDeleting(null);
   };
 
+  const openRename = (purchase: Purchase, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setRenamePurchase(purchase);
+    setRenameName(purchase.title);
+    setRenameOpen(true);
+  };
+
+  const handleRename = async () => {
+    if (!renamePurchase || !renameName.trim()) return;
+    setRenaming(true);
+    try {
+      await fetch(`${API_URL}/purchases/${renamePurchase.id}/rename`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: renameName.trim() }),
+      });
+      setPurchases(prev => prev.map(p => p.id === renamePurchase.id ? { ...p, title: renameName.trim() } : p));
+      if (selectedPurchase?.id === renamePurchase.id)
+        setSelectedPurchase(prev => prev ? { ...prev, title: renameName.trim() } : null);
+      setRenameOpen(false);
+      setRenamePurchase(null);
+    } catch {}
+    setRenaming(false);
+  };
+
   const openSaveAsList = (purchase: Purchase, e: React.MouseEvent) => {
     e.stopPropagation();
     setSaveAsListPurchase(purchase);
@@ -143,14 +173,41 @@ export default function MisComprasPage() {
     return d.toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" });
   };
 
-  const filteredPurchases = purchases.filter(p => {
-    if (filter === "pending") return !p.is_completed;
-    if (filter === "completed") return p.is_completed;
+  const inTimePeriod = (iso: string): boolean => {
+    if (timePeriod === "all") return true;
+    const SPAIN = "Europe/Madrid";
+    const fmt = (d: Date) => d.toLocaleDateString("es-ES", { timeZone: SPAIN });
+    const now = new Date();
+    const date = new Date(iso);
+    if (timePeriod === "today") return fmt(date) === fmt(now);
+    if (timePeriod === "week") {
+      // lunes de esta semana en hora española
+      const todaySpain = new Date(now.toLocaleString("en-US", { timeZone: SPAIN }));
+      const mon = new Date(todaySpain);
+      mon.setDate(todaySpain.getDate() - ((todaySpain.getDay() + 6) % 7));
+      mon.setHours(0, 0, 0, 0);
+      const dateSpain = new Date(date.toLocaleString("en-US", { timeZone: SPAIN }));
+      return dateSpain >= mon;
+    }
+    if (timePeriod === "month") {
+      const d = new Date(date.toLocaleString("en-US", { timeZone: SPAIN }));
+      const n = new Date(now.toLocaleString("en-US", { timeZone: SPAIN }));
+      return d.getMonth() === n.getMonth() && d.getFullYear() === n.getFullYear();
+    }
+    if (timePeriod === "year") {
+      const d = new Date(date.toLocaleString("en-US", { timeZone: SPAIN }));
+      return d.getFullYear() === new Date(now.toLocaleString("en-US", { timeZone: SPAIN })).getFullYear();
+    }
     return true;
+  };
+
+  const filteredPurchases = purchases.filter(p => {
+    const statusOk = filter === "all" || (filter === "pending" ? !p.is_completed : p.is_completed);
+    return statusOk && inTimePeriod(p.created_at);
   });
 
-  const totalGastado = purchases.filter(p => p.is_completed).reduce((acc, p) => acc + p.total_price, 0);
-  const pendientes = purchases.filter(p => !p.is_completed).length;
+  const totalGastado = filteredPurchases.filter(p => p.is_completed).reduce((acc, p) => acc + p.total_price, 0);
+  const pendientes = filteredPurchases.filter(p => !p.is_completed).length;
 
   if (loading) return <Loading />;
 
@@ -189,17 +246,35 @@ export default function MisComprasPage() {
       </div>
 
       {/* Filtros */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-        {[
-          { key: "all", label: "Todas" },
-          { key: "pending", label: "Pendientes" },
-          { key: "completed", label: "Completadas" },
-        ].map(f => (
-          <button key={f.key} onClick={() => setFilter(f.key as typeof filter)}
-            style={{ padding: "7px 16px", borderRadius: 20, border: `1.5px solid ${filter === f.key ? "#6B7A3A" : "#E8DFD0"}`, background: filter === f.key ? "#6B7A3A" : "white", color: filter === f.key ? "white" : "#8C7B6B", fontSize: "0.82rem", fontFamily: "system-ui", fontWeight: 600, cursor: "pointer" }}>
-            {f.label}
-          </button>
-        ))}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+        {/* Estado — izquierda */}
+        <div style={{ display: "flex", gap: 8 }}>
+          {([
+            { key: "all",       label: "Todas" },
+            { key: "pending",   label: "Pendientes" },
+            { key: "completed", label: "Completadas" },
+          ] as const).map(f => (
+            <button key={f.key} onClick={() => setFilter(f.key)}
+              style={{ padding: "7px 16px", borderRadius: 20, border: `1.5px solid ${filter === f.key ? "#6B7A3A" : "#E8DFD0"}`, background: filter === f.key ? "#6B7A3A" : "white", color: filter === f.key ? "white" : "#8C7B6B", fontSize: "0.82rem", fontFamily: "system-ui", fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}>
+              {f.label}
+            </button>
+          ))}
+        </div>
+        {/* Periodo — derecha, badge estilo home */}
+        <div style={{ display: "flex", background: "white", border: "1.5px solid #E8DFD0", borderRadius: 12, padding: 4, gap: 2 }}>
+          {([
+            { key: "all",   label: "Todo" },
+            { key: "today", label: "Hoy" },
+            { key: "week",  label: "Semana" },
+            { key: "month", label: "Mes" },
+            { key: "year",  label: "Año" },
+          ] as const).map(f => (
+            <button key={f.key} onClick={() => setTimePeriod(f.key)}
+              style={{ padding: "8px 14px", borderRadius: 9, border: "none", background: timePeriod === f.key ? "#3D2B1F" : "transparent", color: timePeriod === f.key ? "white" : "#8C7B6B", fontSize: "0.82rem", fontFamily: "system-ui", fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}>
+              {f.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Lista de compras */}
@@ -211,12 +286,13 @@ export default function MisComprasPage() {
         <div style={{ textAlign: "center", padding: "60px 24px", background: "white", borderRadius: 16, border: "1.5px solid #E8DFD0" }}>
           <ShoppingCart size={48} color="#E8DFD0" style={{ margin: "0 auto 16px", display: "block" }} />
           <p style={{ fontSize: "1rem", fontWeight: 700, color: "#3D2B1F", fontFamily: "Georgia, serif", margin: "0 0 8px" }}>
-            {filter === "all" ? "No tienes compras aún" : filter === "pending" ? "No tienes compras pendientes" : "No tienes compras completadas"}
+            {filter === "pending" ? "Sin compras pendientes" : filter === "completed" ? "Sin compras completadas" : "Sin compras"}
+            {timePeriod !== "all" && ` ${timePeriod === "today" ? "hoy" : timePeriod === "week" ? "esta semana" : timePeriod === "month" ? "este mes" : "este año"}`}
           </p>
           <p style={{ fontSize: "0.85rem", color: "#8C7B6B", fontFamily: "system-ui", margin: "0 0 20px" }}>
-            {filter === "all" && "Empieza una nueva compra y guárdala aquí"}
+            {timePeriod !== "all" ? "Prueba con otro período de tiempo" : "Empieza una nueva compra y guárdala aquí"}
           </p>
-          {filter === "all" && (
+          {timePeriod === "all" && filter === "all" && (
             <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => router.push("/compra")}
               style={{ background: "#6B7A3A", color: "white", border: "none", borderRadius: 12, padding: "12px 24px", fontFamily: "system-ui", fontWeight: 700, fontSize: "0.9rem", cursor: "pointer" }}>
               Ir a La Compra
@@ -271,13 +347,11 @@ export default function MisComprasPage() {
 
               {/* Acciones */}
               <div style={{ display: "flex", gap: 6, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
-                {!purchase.is_completed && (
-                  <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
-                    onClick={(e) => handleComplete(purchase.id, e)}
-                    style={{ width: 32, height: 32, background: "#6B7A3A10", border: "1px solid #6B7A3A30", borderRadius: 8, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <Check size={14} color="#6B7A3A" />
-                  </motion.button>
-                )}
+                <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+                  onClick={(e) => openRename(purchase, e)}
+                  style={{ width: 32, height: 32, background: "#B8A06A10", border: "1px solid #B8A06A40", borderRadius: 8, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Pencil size={14} color="#B8A06A" />
+                </motion.button>
                 <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
                   onClick={(e) => openSaveAsList(purchase, e)}
                   style={{ width: 32, height: 32, background: "#6B7A3A10", border: "1px solid #6B7A3A30", borderRadius: 8, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -313,8 +387,8 @@ export default function MisComprasPage() {
               style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: 480, background: "white", zIndex: 201, display: "flex", flexDirection: "column", boxShadow: "-8px 0 40px rgba(61,43,31,0.15)" }}
             >
               {detailLoading ? (
-                <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <span style={{ width: 32, height: 32, border: "3px solid #E8DFD0", borderTopColor: "#6B7A3A", borderRadius: "50%", animation: "spin 0.7s linear infinite", display: "block" }} />
+                <div style={{ flex: 1 }}>
+                  <Loading background="white" />
                 </div>
               ) : selectedPurchase && (
                 <>
@@ -458,6 +532,48 @@ export default function MisComprasPage() {
                   onClick={handleSaveAsList} disabled={!listFormName.trim() || listSaving}
                   style={{ flex: 2, padding: 14, background: listFormName.trim() ? "#6B7A3A" : "#E8DFD0", color: listFormName.trim() ? "white" : "#8C7B6B", border: "none", borderRadius: 12, fontFamily: "system-ui", fontWeight: 700, fontSize: "0.9rem", cursor: listFormName.trim() ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
                   {listSaving ? <><span style={{ width: 14, height: 14, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "white", borderRadius: "50%", animation: "spin 0.7s linear infinite", display: "inline-block" }} />Guardando...</> : "Guardar en Mis Listas"}
+                </motion.button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Modal renombrar */}
+      <AnimatePresence>
+        {renameOpen && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setRenameOpen(false)}
+              style={{ position: "fixed", inset: 0, background: "rgba(61,43,31,0.5)", zIndex: 300, backdropFilter: "blur(4px)" }} />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.92 }} transition={{ type: "spring", damping: 20, stiffness: 200 }}
+              style={{ position: "fixed", top: "30%", left: "50%", transform: "translate(-50%, -50%)", width: 420, background: "white", borderRadius: 24, padding: "32px", zIndex: 301, boxShadow: "0 24px 80px rgba(61,43,31,0.2)" }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+                <h2 style={{ fontFamily: "Georgia, serif", fontSize: "1.2rem", color: "#3D2B1F", margin: 0 }}>Editar nombre</h2>
+                <button onClick={() => setRenameOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "#8C7B6B" }}>
+                  <X size={20} />
+                </button>
+              </div>
+              <input
+                type="text" value={renameName} onChange={e => setRenameName(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && handleRename()}
+                autoFocus
+                style={{ width: "100%", padding: "12px 16px", border: "1.5px solid #E8DFD0", borderRadius: 12, fontSize: "0.95rem", color: "#3D2B1F", background: "#F5F0E8", outline: "none", fontFamily: "system-ui", boxSizing: "border-box", marginBottom: 20 }}
+                onFocus={e => { e.target.style.borderColor = "#6B7A3A"; e.target.style.background = "white"; }}
+                onBlur={e => { e.target.style.borderColor = "#E8DFD0"; e.target.style.background = "#F5F0E8"; }}
+              />
+              <div style={{ display: "flex", gap: 10 }}>
+                <button onClick={() => setRenameOpen(false)}
+                  style={{ flex: 1, padding: 14, background: "#F5F0E8", border: "none", borderRadius: 12, fontFamily: "system-ui", fontWeight: 600, fontSize: "0.9rem", cursor: "pointer", color: "#8C7B6B" }}>
+                  Cancelar
+                </button>
+                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                  onClick={handleRename} disabled={!renameName.trim() || renaming}
+                  style={{ flex: 2, padding: 14, background: renameName.trim() ? "#6B7A3A" : "#E8DFD0", color: renameName.trim() ? "white" : "#8C7B6B", border: "none", borderRadius: 12, fontFamily: "system-ui", fontWeight: 700, fontSize: "0.9rem", cursor: renameName.trim() ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                  {renaming ? <><span style={{ width: 14, height: 14, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "white", borderRadius: "50%", animation: "spin 0.7s linear infinite", display: "inline-block" }} />Guardando...</> : "Guardar"}
                 </motion.button>
               </div>
             </motion.div>

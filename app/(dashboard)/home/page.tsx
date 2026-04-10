@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
-import { ShoppingCart, TrendingDown, Tag, List, ArrowRight, Flame, TrendingUp } from "lucide-react";
+import { ShoppingCart, TrendingDown, Tag, List, ArrowRight, Flame, TrendingUp, Wallet, Calendar, CalendarDays, CalendarRange, BarChart3, Settings } from "lucide-react";
 import Link from "next/link";
-import Loading from "../loading";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line,
@@ -14,7 +13,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 type User = { id: number; name: string; email: string };
 type Stats = { total_spent: number; total_purchases: number; monthly_spent: number; weekly_spent: number; budgets: Record<string, number> };
-type History = { chart_data: { label: string; gasto: number }[]; supermarket_totals: Record<string, number>; period_spent: number; ahorro_estimado: number };
+type History = { chart_data: { label: string; gasto: number; count: number; ticket_medio: number }[]; supermarket_totals: Record<string, number>; period_spent: number; ahorro_estimado: number };
 type Oferta = { id: number; product_name: string; image_url: string; supermarket: string; price: number; original_price: number; category: string };
 type Period = "dia" | "semana" | "mes" | "año";
 
@@ -23,7 +22,7 @@ const SM_COLORS = ["#6B7A3A", "#B8A06A", "#C17F3A", "#3D2B1F"];
 const DAY_ORDER = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 const MONTH_ORDER = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
-function sortChartData(data: { label: string; gasto: number }[], period: Period) {
+function sortChartData(data: { label: string; gasto: number; count: number; ticket_medio: number }[], period: Period) {
   const copy = [...data];
   if (period === "semana") return copy.sort((a, b) => DAY_ORDER.indexOf(a.label) - DAY_ORDER.indexOf(b.label));
   if (period === "año") return copy.sort((a, b) => MONTH_ORDER.indexOf(a.label) - MONTH_ORDER.indexOf(b.label));
@@ -35,17 +34,24 @@ function isCurrentLabel(label: string, period: Period): boolean {
   const now = new Date();
   if (period === "semana") return label === DAY_ORDER[(now.getDay() + 6) % 7];
   if (period === "año") return label === MONTH_ORDER[now.getMonth()];
-  if (period === "mes") return label === "Sem 4"; // Sem 4 = esta semana (el backend siempre la pone última)
+  if (period === "mes") {
+    // Calcular en qué semana del mes estamos (misma lógica que el backend)
+    const day = now.getDate();
+    const currentWeek = Math.ceil(day / 7);
+    return label === `Sem ${currentWeek}`;
+  }
   if (period === "dia") return (parseInt(label.replace(/\D/g, "")) || 0) === now.getHours();
   return false;
 }
 
-const CustomTooltip = ({ active, payload, label }: any) => {
+const CustomTooltip = ({ active, payload, label, unit = "€" }: any) => {
   if (active && payload && payload.length) {
+    const val = payload[0].value;
+    const formatted = unit === "€" ? `${val.toFixed(2)}€` : `${val} compra${val !== 1 ? "s" : ""}`;
     return (
       <div style={{ background: "white", border: "1.5px solid #E8DFD0", borderRadius: 10, padding: "8px 14px", boxShadow: "0 4px 16px rgba(61,43,31,0.1)" }}>
         <p style={{ fontSize: "0.78rem", color: "#8C7B6B", fontFamily: "system-ui", margin: "0 0 4px" }}>{label}</p>
-        <p style={{ fontSize: "1rem", fontWeight: 700, color: "#3D2B1F", fontFamily: "Georgia, serif", margin: 0 }}>{payload[0].value.toFixed(2)}€</p>
+        <p style={{ fontSize: "1rem", fontWeight: 700, color: "#3D2B1F", fontFamily: "Georgia, serif", margin: 0 }}>{formatted}</p>
       </div>
     );
   }
@@ -57,26 +63,32 @@ export default function HomePage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [history, setHistory] = useState<History | null>(null);
   const [ofertas, setOfertas] = useState<Oferta[]>([]);
+  const [ofertasLoading, setOfertasLoading] = useState(true);
   const [hora, setHora] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
   const [period, setPeriod] = useState<Period>("semana");
   const [historyLoading, setHistoryLoading] = useState(false);
   const historyCache = useRef<Partial<Record<Period, History>>>({});
 
   useEffect(() => {
-    const stored = localStorage.getItem("user");
-    if (stored) {
-      const u = JSON.parse(stored);
-      setUser(u);
-      fetchStats(u.id);
-    }
-    fetchOfertas();
     const h = new Date().getHours();
     if (h < 12) setHora("Buenos días");
     else if (h < 20) setHora("Buenas tardes");
     else setHora("Buenas noches");
+
+    const stored = localStorage.getItem("user");
+    if (stored) {
+      const u = JSON.parse(stored);
+      setUser(u);
+      // Stats y periodo inicial en paralelo — lo visible primero
+      Promise.all([fetchStats(u.id), fetchHistory(u.id, "semana")]).then(() => {
+        // Prefetch del resto de periodos en segundo plano, sin bloquear la UI
+        prefetchRemainingPeriods(u.id);
+      });
+    }
+    fetchOfertas();
   }, []);
 
+  // Cambio de periodo: usa cache si está listo, si no fetchea
   useEffect(() => {
     if (user) fetchHistory(user.id, period);
   }, [period, user]);
@@ -88,20 +100,43 @@ export default function HomePage() {
     } catch {}
   };
 
+  const normalizeChartData = (raw: any[], p: Period) =>
+    sortChartData(raw.map(d => ({
+      label: d.label,
+      gasto: d.gasto ?? 0,
+      count: d.count ?? 0,
+      ticket_medio: d.ticket_medio ?? (d.count > 0 ? +(d.gasto / d.count).toFixed(2) : 0),
+    })), p);
+
   const fetchHistory = async (userId: number, p: Period) => {
-    if (historyCache.current[p]) {
-      setHistory(historyCache.current[p]!);
+    const cached = historyCache.current[p];
+    // Invalida el cache si no tiene ticket_medio (respuesta vieja sin ese campo)
+    if (cached && cached.chart_data[0]?.ticket_medio !== undefined) {
+      setHistory(cached);
       return;
     }
     setHistoryLoading(true);
     try {
       const res = await fetch(`${API_URL}/stats/user/${userId}/history?period=${p}`);
       const raw = await res.json();
-      const data = { ...raw, chart_data: sortChartData(raw.chart_data || [], p) };
+      const data = { ...raw, chart_data: normalizeChartData(raw.chart_data || [], p) };
       historyCache.current[p] = data;
       setHistory(data);
     } catch {}
     setHistoryLoading(false);
+  };
+
+  // Precarga los periodos restantes en segundo plano tras cargar el inicial
+  const prefetchRemainingPeriods = (userId: number) => {
+    const periods: Period[] = ["dia", "mes", "año"];
+    periods.forEach(async (p) => {
+      if (historyCache.current[p]) return;
+      try {
+        const res = await fetch(`${API_URL}/stats/user/${userId}/history?period=${p}`);
+        const raw = await res.json();
+        historyCache.current[p] = { ...raw, chart_data: normalizeChartData(raw.chart_data || [], p) };
+      } catch {}
+    });
   };
 
   const fetchOfertas = async () => {
@@ -110,7 +145,7 @@ export default function HomePage() {
       const data = await res.json();
       setOfertas(data.slice(0, 6));
     } catch {}
-    setIsLoading(false);
+    setOfertasLoading(false);
   };
 
   const descuento = (price: number, original: number) =>
@@ -127,7 +162,6 @@ export default function HomePage() {
     { label: "Mis Compras", href: "/mis-compras", icon: TrendingDown, color: "#3D2B1F", desc: "Historial" },
   ];
 
-  if (isLoading) return <Loading />;
 
   return (
     <div style={{ padding: "28px 32px" }}>
@@ -135,11 +169,14 @@ export default function HomePage() {
       {/* Header + filtro */}
       <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
         style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 28, flexWrap: "wrap", gap: 16 }}>
-        <div>
-          <h1 style={{ fontSize: "1.8rem", fontWeight: 700, color: "#3D2B1F", fontFamily: "Georgia, serif", margin: 0 }}>
-            {hora}, {user?.name?.split(" ")[0] || "bienvenido"}
-          </h1>
-          <p style={{ fontSize: "0.9rem", color: "#8C7B6B", margin: "6px 0 0", fontFamily: "system-ui" }}>Resumen de tu actividad</p>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <img src="/images/claropng.png" alt="Caleo" style={{ width: 54, height: 54, objectFit: "contain", flexShrink: 0 }} />
+          <div>
+            <h1 style={{ fontSize: "1.8rem", fontWeight: 700, color: "#3D2B1F", fontFamily: "Georgia, serif", margin: 0 }}>
+              {hora}, {user?.name?.split(" ")[0] || "bienvenido"}
+            </h1>
+            <p style={{ fontSize: "0.9rem", color: "#8C7B6B", margin: "6px 0 0", fontFamily: "system-ui" }}>Resumen de tu actividad</p>
+          </div>
         </div>
         <div style={{ display: "flex", background: "white", border: "1.5px solid #E8DFD0", borderRadius: 12, padding: 4, gap: 2 }}>
           {(["dia", "semana", "mes", "año"] as Period[]).map(p => (
@@ -167,6 +204,69 @@ export default function HomePage() {
           </motion.div>
         ))}
       </div>
+
+      {/* Presupuestos */}
+      {stats && stats.budgets && Object.values(stats.budgets).some(v => v > 0) && (() => {
+        const budgetItems: { key: string; label: string; icon: React.ElementType; spent: number; limit: number }[] = [
+          { key: "daily",   label: "Diario",   icon: Calendar,      spent: 0,                      limit: stats.budgets.daily   || 0 },
+          { key: "weekly",  label: "Semanal",  icon: CalendarDays,  spent: stats.weekly_spent || 0, limit: stats.budgets.weekly  || 0 },
+          { key: "monthly", label: "Mensual",  icon: CalendarRange, spent: stats.monthly_spent || 0, limit: stats.budgets.monthly || 0 },
+          { key: "yearly",  label: "Anual",    icon: Wallet,        spent: stats.total_spent || 0,  limit: stats.budgets.yearly  || 0 },
+        ].filter(b => b.limit > 0);
+
+        const cols = budgetItems.length === 1 ? "1fr" : budgetItems.length === 2 ? "repeat(2, 1fr)" : budgetItems.length === 3 ? "repeat(3, 1fr)" : "repeat(4, 1fr)";
+
+        return (
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28 }} style={{ marginBottom: 20 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+              <h2 style={{ fontSize: "0.75rem", fontWeight: 700, color: "#8C7B6B", fontFamily: "system-ui", margin: 0, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                Control de presupuesto
+              </h2>
+              <Link href="/ajustes" style={{ fontSize: "0.75rem", color: "#6B7A3A", fontFamily: "system-ui", fontWeight: 600, display: "flex", alignItems: "center", gap: 4, textDecoration: "none" }}>
+                <Settings size={12} /> Ajustar
+              </Link>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: cols, gap: 14 }}>
+              {budgetItems.map((b, i) => {
+                const pct = Math.min((b.spent / b.limit) * 100, 100);
+                const over = b.spent > b.limit;
+                const barColor = over ? "#A63D2F" : "#6B7A3A";
+                const bgColor = over ? "rgba(166,61,47,0.06)" : "rgba(107,122,58,0.06)";
+                const Icon = b.icon;
+                return (
+                  <motion.div key={b.key} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28 + i * 0.06 }}
+                    style={{ background: "white", border: `1.5px solid ${over ? "rgba(166,61,47,0.25)" : "#E8DFD0"}`, borderRadius: 16, padding: "16px 18px", boxShadow: "0 2px 12px rgba(61,43,31,0.04)" }}>
+                    {/* Header */}
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <div style={{ width: 32, height: 32, borderRadius: 9, background: bgColor, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <Icon size={15} color={barColor} />
+                        </div>
+                        <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#3D2B1F", fontFamily: "system-ui" }}>{b.label}</span>
+                      </div>
+                      <span style={{ fontSize: "0.72rem", fontWeight: 700, color: barColor, fontFamily: "system-ui", background: bgColor, borderRadius: 6, padding: "3px 7px" }}>
+                        {over ? `+${(b.spent - b.limit).toFixed(2)}€` : `${Math.round(pct)}%`}
+                      </span>
+                    </div>
+                    {/* Progress bar */}
+                    <div style={{ height: 7, background: "#F5F0E8", borderRadius: 4, marginBottom: 10, overflow: "hidden" }}>
+                      <div style={{ height: "100%", width: `${pct}%`, background: barColor, borderRadius: 4, transition: "width 0.6s ease" }} />
+                    </div>
+                    {/* Amounts */}
+                    <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
+                      <span style={{ fontSize: "1.3rem", fontWeight: 700, color: barColor, fontFamily: "Georgia, serif" }}>{b.spent.toFixed(2)}€</span>
+                      <span style={{ fontSize: "0.75rem", color: "#8C7B6B", fontFamily: "system-ui" }}>de {b.limit.toFixed(2)}€</span>
+                    </div>
+                    <p style={{ fontSize: "0.7rem", color: over ? "#A63D2F" : "#8C7B6B", fontFamily: "system-ui", margin: "4px 0 0", fontWeight: over ? 600 : 400 }}>
+                      {over ? "Presupuesto superado" : `Quedan ${(b.limit - b.spent).toFixed(2)}€`}
+                    </p>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </motion.div>
+        );
+      })()}
 
       {/* Charts fila 1 */}
       <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 16, marginBottom: 20 }}>
@@ -234,17 +334,23 @@ export default function HomePage() {
         </motion.div>
       </div>
 
-      {/* LineChart ahorro — fila completa */}
+      {/* LineChart ticket medio — fila completa */}
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
         style={{ background: "white", border: "1.5px solid #E8DFD0", borderRadius: 16, padding: "20px 24px", boxShadow: "0 2px 12px rgba(61,43,31,0.04)", marginBottom: 20 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
           <div>
-            <h3 style={{ fontSize: "0.9rem", fontWeight: 700, color: "#3D2B1F", fontFamily: "system-ui", margin: "0 0 2px" }}>Evolución del gasto</h3>
-            <p style={{ fontSize: "0.72rem", color: "#8C7B6B", fontFamily: "system-ui", margin: 0 }}>tendencia acumulada</p>
+            <h3 style={{ fontSize: "0.9rem", fontWeight: 700, color: "#3D2B1F", fontFamily: "system-ui", margin: "0 0 2px" }}>Ticket medio por compra</h3>
+            <p style={{ fontSize: "0.72rem", color: "#8C7B6B", fontFamily: "system-ui", margin: 0 }}>gasto medio en cada visita</p>
           </div>
           <div style={{ textAlign: "right" }}>
-            <p style={{ fontSize: "1.3rem", fontWeight: 700, color: "#6B7A3A", fontFamily: "Georgia, serif", margin: 0 }}>{(history?.ahorro_estimado || 0).toFixed(2)}€</p>
-            <p style={{ fontSize: "0.7rem", color: "#8C7B6B", fontFamily: "system-ui", margin: 0 }}>ahorro est.</p>
+            <p style={{ fontSize: "1.3rem", fontWeight: 700, color: "#B8A06A", fontFamily: "Georgia, serif", margin: 0 }}>
+              {(() => {
+                const totalCompras = history?.chart_data.reduce((s, d) => s + (d.count || 0), 0) || 0;
+                const totalGasto = history?.chart_data.reduce((s, d) => s + d.gasto, 0) || 0;
+                return totalCompras > 0 ? `${(totalGasto / totalCompras).toFixed(2)}€` : "—";
+              })()}
+            </p>
+            <p style={{ fontSize: "0.7rem", color: "#8C7B6B", fontFamily: "system-ui", margin: 0 }}>media del periodo</p>
           </div>
         </div>
         {history?.chart_data.every(d => d.gasto === 0) ? (
@@ -257,14 +363,14 @@ export default function HomePage() {
               <CartesianGrid strokeDasharray="3 3" stroke="#F5F0E8" vertical={false} />
               <XAxis dataKey="label" tick={{ fontSize: 10, fontFamily: "system-ui", fill: "#8C7B6B" }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 10, fontFamily: "system-ui", fill: "#8C7B6B" }} axisLine={false} tickLine={false} tickFormatter={v => `${v}€`} />
-              <Tooltip content={<CustomTooltip />} isAnimationActive={false} />
-              <Line type="monotone" dataKey="gasto" stroke="#6B7A3A" strokeWidth={2.5}
+              <Tooltip content={<CustomTooltip unit="€" />} isAnimationActive={false} />
+              <Line type="monotone" dataKey="ticket_medio" stroke="#B8A06A" strokeWidth={2.5}
                 dot={(props: any) => {
                   const { cx, cy, payload } = props;
                   const current = isCurrentLabel(payload.label, period);
-                  return <circle key={payload.label} cx={cx} cy={cy} r={current ? 6 : 3} fill={current ? "#C17F3A" : "#6B7A3A"} stroke="white" strokeWidth={current ? 2 : 0} />;
+                  return <circle key={payload.label} cx={cx} cy={cy} r={current ? 6 : 3} fill={current ? "#C17F3A" : "#B8A06A"} stroke="white" strokeWidth={current ? 2 : 0} />;
                 }}
-                activeDot={{ r: 6, fill: "#6B7A3A" }}
+                activeDot={{ r: 6, fill: "#B8A06A" }}
               />
             </LineChart>
           </ResponsiveContainer>
@@ -314,7 +420,13 @@ export default function HomePage() {
             Ver todas <ArrowRight size={13} />
           </Link>
         </div>
-        {ofertas.length === 0 ? (
+        {ofertasLoading ? (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 12 }}>
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} style={{ background: "#F5F0E8", borderRadius: 14, aspectRatio: "1", animation: "pulse 1.4s ease-in-out infinite", animationDelay: `${i * 0.1}s` }} />
+            ))}
+          </div>
+        ) : ofertas.length === 0 ? (
           <div style={{ background: "white", border: "1.5px solid #E8DFD0", borderRadius: 16, padding: 32, textAlign: "center", color: "#8C7B6B", fontFamily: "system-ui" }}>
             No hay ofertas disponibles
           </div>
@@ -346,7 +458,7 @@ export default function HomePage() {
         )}
       </motion.div>
 
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } } @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }`}</style>
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, List, Trash2, ChevronRight, X, Edit2, ShoppingCart, Package, Leaf, Wheat, Droplets, PawPrint, Wine, Coffee, Beef, Snowflake, LucideIcon } from "lucide-react";
+import { Plus, List, Trash2, ChevronRight, X, Edit2, ShoppingCart, Package, Leaf, Wheat, Droplets, PawPrint, Wine, Coffee, Beef, Snowflake, LucideIcon, Search, CalendarDays, Receipt } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Loading from "../loading";
 import { ProductPanel } from "@/components/product-panel";
@@ -70,6 +70,11 @@ export default function MisListasPage() {
 
   const [deleting, setDeleting] = useState<number | null>(null);
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredLists = lists.filter(l =>
+    getListIcon(l.name).cleanName.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   useEffect(() => {
     const stored = localStorage.getItem("user");
@@ -179,6 +184,40 @@ export default function MisListasPage() {
         </motion.button>
       </div>
 
+      {/* Stats + Búsqueda */}
+      {lists.length > 0 && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 8 }}>
+            <div style={{ background: "white", border: "1.5px solid #E8DFD0", borderRadius: 10, padding: "8px 14px", display: "flex", gap: 6, alignItems: "center" }}>
+              <List size={13} color="#6B7A3A" />
+              <span style={{ fontSize: "0.8rem", color: "#3D2B1F", fontFamily: "system-ui", fontWeight: 600 }}>
+                {lists.length} {lists.length === 1 ? "lista" : "listas"}
+              </span>
+            </div>
+            <div style={{ background: "white", border: "1.5px solid #E8DFD0", borderRadius: 10, padding: "8px 14px", display: "flex", gap: 6, alignItems: "center" }}>
+              <Package size={13} color="#6B7A3A" />
+              <span style={{ fontSize: "0.8rem", color: "#3D2B1F", fontFamily: "system-ui", fontWeight: 600 }}>
+                {lists.reduce((acc, l) => acc + l.items_count, 0)} productos
+              </span>
+            </div>
+          </div>
+          {lists.length > 2 && (
+            <div style={{ flex: 1, minWidth: 180, position: "relative" }}>
+              <Search size={14} color="#8C7B6B" style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
+              <input
+                type="text"
+                placeholder="Buscar lista..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                style={{ width: "100%", padding: "8px 12px 8px 34px", border: "1.5px solid #E8DFD0", borderRadius: 10, fontSize: "0.82rem", color: "#3D2B1F", background: "#F5F0E8", outline: "none", fontFamily: "system-ui", boxSizing: "border-box" }}
+                onFocus={e => { e.target.style.borderColor = "#6B7A3A"; e.target.style.background = "white"; }}
+                onBlur={e => { e.target.style.borderColor = "#E8DFD0"; e.target.style.background = "#F5F0E8"; }}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Listas */}
       {loading ? (
         <div style={{ display: "flex", justifyContent: "center", padding: 60 }}>
@@ -197,7 +236,12 @@ export default function MisListasPage() {
         </div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 14 }}>
-          {lists.map((list, i) => {
+          {filteredLists.length === 0 && searchQuery && (
+            <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "40px 24px", color: "#8C7B6B", fontFamily: "system-ui", fontSize: "0.88rem" }}>
+              Sin resultados para <strong style={{ color: "#3D2B1F" }}>"{searchQuery}"</strong>
+            </div>
+          )}
+          {filteredLists.map((list, i) => {
             const color = LIST_COLORS[i % LIST_COLORS.length];
             return (
               <motion.div
@@ -372,9 +416,17 @@ export default function MisListasPage() {
                       {selectedList.description && (
                         <p style={{ fontSize: "0.78rem", color: "#8C7B6B", fontFamily: "system-ui", margin: 0 }}>{selectedList.description}</p>
                       )}
-                      <p style={{ fontSize: "0.75rem", color: "#8C7B6B", fontFamily: "system-ui", margin: "4px 0 0" }}>
-                        {selectedList.items.length} productos
-                      </p>
+                      <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 4 }}>
+                        <p style={{ fontSize: "0.75rem", color: "#8C7B6B", fontFamily: "system-ui", margin: 0 }}>
+                          {selectedList.items.length} productos
+                        </p>
+                        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                          <CalendarDays size={11} color="#8C7B6B" />
+                          <span style={{ fontSize: "0.75rem", color: "#8C7B6B", fontFamily: "system-ui" }}>
+                            {formatDate(selectedList.created_at)}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                     <button onClick={() => setDetailOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "#8C7B6B", flexShrink: 0 }}>
                       <X size={20} />
@@ -413,8 +465,34 @@ export default function MisListasPage() {
 
                   {/* Footer */}
                   <div style={{ padding: "16px 24px", borderTop: "1px solid #E8DFD0", display: "flex", flexDirection: "column", gap: 10 }}>
+                    {selectedList.items.some(i => i.price) && (
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: "#F5F0E8", borderRadius: 10 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <Receipt size={14} color="#6B7A3A" />
+                          <span style={{ fontSize: "0.8rem", color: "#8C7B6B", fontFamily: "system-ui", fontWeight: 600 }}>Total estimado</span>
+                        </div>
+                        <span style={{ fontSize: "1rem", fontWeight: 700, color: "#3D2B1F", fontFamily: "Georgia, serif" }}>
+                          {selectedList.items.reduce((acc, i) => acc + (i.price || 0) * i.quantity, 0).toFixed(2)}€
+                        </span>
+                      </div>
+                    )}
                     <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                      onClick={() => { setDetailOpen(false); router.push("/compra"); }}
+                      onClick={() => {
+                        if (selectedList) {
+                          localStorage.setItem("caleo_prefill_list", JSON.stringify({
+                            listId: selectedList.id,
+                            listName: getListIcon(selectedList.name).cleanName,
+                            items: selectedList.items.map(item => ({
+                              product_id: item.product_id,
+                              product_name: item.product_name,
+                              image_url: item.image_url,
+                              quantity: item.quantity,
+                            })),
+                          }));
+                        }
+                        setDetailOpen(false);
+                        router.push("/compra");
+                      }}
                       style={{ width: "100%", padding: 14, background: "#6B7A3A", color: "white", border: "none", borderRadius: 12, fontFamily: "system-ui", fontWeight: 700, fontSize: "0.95rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
                       <ShoppingCart size={16} />
                       Añadir productos

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, ShoppingCart, Plus, Minus, X, GitCompare, Zap, ShoppingBag, AlertTriangle, SlidersHorizontal, Leaf, Beef, Fish, Milk, Sandwich, Wheat, Snowflake, Archive, Droplets, FlaskConical, Sunrise, Cookie, Candy, CupSoda, GlassWater, Wine, Coffee, Sprout, Smile, Sparkles, PawPrint, Baby, Package, Apple, Utensils, LucideIcon } from "lucide-react";
+import { Search, ShoppingCart, Plus, Minus, X, GitCompare, Zap, ShoppingBag, AlertTriangle, SlidersHorizontal, Leaf, Beef, Fish, Milk, Sandwich, Wheat, Snowflake, Archive, Droplets, FlaskConical, Sunrise, Cookie, Candy, CupSoda, GlassWater, Wine, Coffee, Sprout, Smile, Sparkles, PawPrint, Baby, Package, Apple, Utensils, LucideIcon, ChevronLeft, SplitSquareHorizontal } from "lucide-react";
 import { ProductPanel } from "@/components/product-panel";
 import Loading from "../loading";
 
@@ -62,6 +62,10 @@ export default function CompraPage() {
   const [compareOpen, setCompareOpen] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
 
+  const [chooseWhereOpen, setChooseWhereOpen] = useState(false);
+  const [purchaseStrategy, setPurchaseStrategy] = useState<"cheapest" | "mercadona" | "dia">("cheapest");
+  const [fromList, setFromList] = useState<{ listId: number; listName: string } | null>(null);
+
   const [modePopup, setModePopup] = useState(true);
   const [mode, setMode] = useState<Mode>(null);
   const [budgetPopup, setBudgetPopup] = useState(false);
@@ -72,6 +76,24 @@ export default function CompraPage() {
 
   useEffect(() => {
     fetch(`${API_URL}/products/categories`).then(r => r.json()).then(setCategories).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const raw = localStorage.getItem("caleo_prefill_list");
+    if (!raw) return;
+    try {
+      const data = JSON.parse(raw);
+      localStorage.removeItem("caleo_prefill_list");
+      setFromList({ listId: data.listId, listName: data.listName });
+      if (data.items?.length > 0) {
+        setCart(data.items.map((item: { product_id: number; product_name: string; image_url: string | null; quantity: number }) => ({
+          product: { id: item.product_id, name: item.product_name, image_url: item.image_url || "", category_id: 0, supermarkets_count: 2 },
+          quantity: item.quantity,
+        })));
+      }
+      setMode("normal");
+      setModePopup(false);
+    } catch {}
   }, []);
 
   useEffect(() => {
@@ -159,25 +181,50 @@ export default function CompraPage() {
       if (!user) return;
       const items = compareResult.items
         .filter(i => !i.not_found)
-        .map(i => ({
-          product_id: i.product_id,
-          supermarket_id: i.cheapest.supermarket_id,
-          price: i.cheapest.price,
-          quantity: i.quantity,
-          is_offer: i.cheapest.is_offer,
-        }));
+        .map(i => {
+          const priceItem = purchaseStrategy === "mercadona"
+            ? (i.prices.find(p => p.supermarket_slug === "mercadona") ?? i.cheapest)
+            : purchaseStrategy === "dia"
+              ? (i.prices.find(p => p.supermarket_slug === "dia") ?? i.cheapest)
+              : i.cheapest;
+          return {
+            product_id: i.product_id,
+            supermarket_id: priceItem.supermarket_id,
+            price: priceItem.price,
+            quantity: i.quantity,
+            is_offer: priceItem.is_offer,
+          };
+        });
+      const strategyTotal = items.reduce((acc, i) => acc + i.price * i.quantity, 0);
+
+      if (fromList) {
+        await fetch(`${API_URL}/lists/${fromList.listId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            items: items.map(i => ({
+              product_id: i.product_id,
+              supermarket_id: i.supermarket_id,
+              price: i.price,
+              quantity: i.quantity,
+              unit: null,
+            })),
+          }),
+        });
+      }
+
       const res = await fetch(`${API_URL}/purchases/save`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           user_id: user.id,
           title: `Compra ${new Date().toLocaleDateString("es-ES")}`,
-          total_price: compareResult.total,
+          total_price: strategyTotal,
           budget_limit: budget ? parseFloat(budget) : null,
           items,
         }),
       });
-      if (res.ok) router.push("/mis-compras");
+      if (res.ok) router.push(fromList ? "/mis-listas" : "/mis-compras");
     } catch {}
     setSaving(false);
   };
@@ -294,6 +341,24 @@ export default function CompraPage() {
           </>
         )}
       </AnimatePresence>
+
+      {/* Banner vuelta a mis-listas */}
+      {fromList && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, padding: "10px 16px", background: "#F5F0E8", borderRadius: 12, border: "1.5px solid #E8DFD0" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <ShoppingBag size={14} color="#6B7A3A" />
+            <span style={{ fontSize: "0.82rem", color: "#8C7B6B", fontFamily: "system-ui" }}>
+              Añadiendo a <strong style={{ color: "#3D2B1F" }}>{fromList.listName}</strong>
+            </span>
+          </div>
+          <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+            onClick={() => router.push("/mis-listas")}
+            style={{ background: "#3D2B1F", border: "none", borderRadius: 8, padding: "6px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, color: "white", fontFamily: "system-ui", fontWeight: 600, fontSize: "0.8rem" }}>
+            <X size={12} />
+            Cerrar compra
+          </motion.button>
+        </div>
+      )}
 
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
@@ -514,11 +579,25 @@ export default function CompraPage() {
       </AnimatePresence>
 
       {/* Panel resultado comparación */}
-      <AnimatePresence>
-        {compareOpen && compareResult && (
-          <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setCompareOpen(false)}
-              style={{ position: "fixed", inset: 0, background: "rgba(61,43,31,0.4)", zIndex: 200 }} />
+      {(() => {
+        // Calcular total real por supermercado (suma de TODOS los productos disponibles en ese super)
+        const smFullTotals: Record<string, number> = {};
+        if (compareResult) {
+          for (const item of compareResult.items) {
+            for (const p of item.prices) {
+              smFullTotals[p.supermarket] = (smFullTotals[p.supermarket] ?? 0) + p.price * item.quantity;
+            }
+          }
+        }
+        const sortedSm = Object.entries(smFullTotals).sort(([, a], [, b]) => a - b);
+        const cheapestSmName = sortedSm[0]?.[0];
+
+        return (
+          <AnimatePresence>
+            {compareOpen && compareResult && (
+            <>
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setCompareOpen(false)}
+                style={{ position: "fixed", inset: 0, background: "rgba(61,43,31,0.4)", zIndex: 200 }} />
             <motion.div initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 200 }}
               style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: 500, background: "white", zIndex: 201, display: "flex", flexDirection: "column", boxShadow: "-8px 0 40px rgba(61,43,31,0.15)" }}>
               <div style={{ padding: "20px 24px", borderBottom: "1px solid #E8DFD0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -531,12 +610,20 @@ export default function CompraPage() {
                 <button onClick={() => setCompareOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "#8C7B6B" }}><X size={20} /></button>
               </div>
               <div style={{ padding: "16px 24px", borderBottom: "1px solid #E8DFD0", display: "flex", gap: 12 }}>
-                {Object.entries(compareResult.supermarket_totals).map(([sm, total]) => (
-                  <div key={sm} style={{ flex: 1, background: "#F5F0E8", borderRadius: 12, padding: "12px 16px", textAlign: "center" }}>
-                    <p style={{ fontSize: "0.72rem", color: "#8C7B6B", fontFamily: "system-ui", margin: "0 0 4px", textTransform: "uppercase", letterSpacing: "0.05em" }}>{sm}</p>
-                    <p style={{ fontSize: "1.3rem", fontWeight: 700, color: "#3D2B1F", fontFamily: "Georgia, serif", margin: 0 }}>{total.toFixed(2)}€</p>
-                  </div>
-                ))}
+                {sortedSm.map(([sm, total]) => {
+                  const isCheapest = sm === cheapestSmName;
+                  return (
+                    <div key={sm} style={{ flex: 1, background: isCheapest ? "#6B7A3A" : "#F5F0E8", borderRadius: 12, padding: "12px 16px", textAlign: "center", position: "relative" }}>
+                      {isCheapest && (
+                        <span style={{ position: "absolute", top: -8, left: "50%", transform: "translateX(-50%)", background: "#C17F3A", color: "white", fontSize: "0.6rem", fontWeight: 700, fontFamily: "system-ui", padding: "2px 8px", borderRadius: 99, whiteSpace: "nowrap" }}>
+                          MÁS BARATO
+                        </span>
+                      )}
+                      <p style={{ fontSize: "0.72rem", color: isCheapest ? "rgba(255,255,255,0.8)" : "#8C7B6B", fontFamily: "system-ui", margin: "0 0 4px", textTransform: "uppercase", letterSpacing: "0.05em" }}>{sm}</p>
+                      <p style={{ fontSize: "1.3rem", fontWeight: 700, color: isCheapest ? "white" : "#3D2B1F", fontFamily: "Georgia, serif", margin: 0 }}>{total.toFixed(2)}€</p>
+                    </div>
+                  );
+                })}
               </div>
               <div style={{ flex: 1, overflowY: "auto", padding: "16px 24px", display: "flex", flexDirection: "column", gap: 12 }}>
                 {compareResult.items.map(item => {
@@ -606,14 +693,170 @@ export default function CompraPage() {
                   </div>
                 )}
                 <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                  onClick={handleSavePurchase} disabled={saving}
-                  style={{ width: "100%", padding: 14, background: "#3D2B1F", color: "white", border: "none", borderRadius: 12, fontFamily: "system-ui", fontWeight: 700, fontSize: "1rem", cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.7 : 1 }}>
-                  {saving ? "Guardando..." : "Guardar compra"}
+                  onClick={() => { setPurchaseStrategy("cheapest"); setChooseWhereOpen(true); }}
+                  style={{ width: "100%", padding: 14, background: "#3D2B1F", color: "white", border: "none", borderRadius: 12, fontFamily: "system-ui", fontWeight: 700, fontSize: "1rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                  <SplitSquareHorizontal size={16} />
+                  Elegir dónde comprar →
                 </motion.button>
               </div>
             </motion.div>
-          </>
-        )}
+            </>
+          )}
+          </AnimatePresence>
+        );
+      })()}
+
+      {/* Panel ¿Dónde quieres comprar? */}
+      <AnimatePresence>
+        {chooseWhereOpen && compareResult && (() => {
+          const mercadonaTotal = compareResult.items.reduce((acc, item) => {
+            const p = item.prices.find(p => p.supermarket_slug === "mercadona");
+            return p ? acc + p.price * item.quantity : acc;
+          }, 0);
+          const diaTotal = compareResult.items.reduce((acc, item) => {
+            const p = item.prices.find(p => p.supermarket_slug === "dia");
+            return p ? acc + p.price * item.quantity : acc;
+          }, 0);
+          const mercadonaMissing = compareResult.items.filter(i => !i.prices.find(p => p.supermarket_slug === "mercadona")).length;
+          const diaMissing = compareResult.items.filter(i => !i.prices.find(p => p.supermarket_slug === "dia")).length;
+          const cheapestAtMercadona = compareResult.items.filter(i => !i.not_found && i.cheapest.supermarket_slug === "mercadona").length;
+          const cheapestAtDia = compareResult.items.filter(i => !i.not_found && i.cheapest.supermarket_slug === "dia").length;
+
+          const strategies: { id: "cheapest" | "mercadona" | "dia"; label: string; sublabel: string; breakdown: string; total: number; accentColor: string; dotColor: string | null; missing: number; badge: string | null }[] = [
+            {
+              id: "cheapest",
+              label: "Lo más barato",
+              sublabel: "Cada producto al precio más bajo",
+              breakdown: [cheapestAtMercadona > 0 ? `${cheapestAtMercadona} en Mercadona` : "", cheapestAtDia > 0 ? `${cheapestAtDia} en Día` : ""].filter(Boolean).join(" · "),
+              total: compareResult.total,
+              accentColor: "#6B7A3A",
+              dotColor: null,
+              missing: 0,
+              badge: "MEJOR PRECIO",
+            },
+            {
+              id: "mercadona",
+              label: "Todo en Mercadona",
+              sublabel: `${compareResult.items.length - mercadonaMissing} productos disponibles`,
+              breakdown: "",
+              total: mercadonaTotal,
+              accentColor: "#00A650",
+              dotColor: "#00A650",
+              missing: mercadonaMissing,
+              badge: null,
+            },
+            {
+              id: "dia",
+              label: "Todo en Día",
+              sublabel: `${compareResult.items.length - diaMissing} productos disponibles`,
+              breakdown: "",
+              total: diaTotal,
+              accentColor: "#E31837",
+              dotColor: "#E31837",
+              missing: diaMissing,
+              badge: null,
+            },
+          ];
+
+          const selected = strategies.find(s => s.id === purchaseStrategy)!;
+
+          return (
+            <>
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                onClick={() => setChooseWhereOpen(false)}
+                style={{ position: "fixed", inset: 0, zIndex: 202 }} />
+              <motion.div
+                initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
+                transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: 500, background: "white", zIndex: 203, display: "flex", flexDirection: "column", boxShadow: "-8px 0 40px rgba(61,43,31,0.15)" }}
+              >
+                {/* Header */}
+                <div style={{ padding: "20px 24px", borderBottom: "1px solid #E8DFD0", display: "flex", alignItems: "center", gap: 12 }}>
+                  <button onClick={() => setChooseWhereOpen(false)}
+                    style={{ background: "#F5F0E8", border: "none", borderRadius: 8, width: 32, height: 32, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <ChevronLeft size={18} color="#3D2B1F" />
+                  </button>
+                  <div>
+                    <h2 style={{ fontFamily: "Georgia, serif", fontSize: "1.2rem", color: "#3D2B1F", margin: 0 }}>¿Dónde quieres comprar?</h2>
+                    <p style={{ fontSize: "0.78rem", color: "#8C7B6B", fontFamily: "system-ui", margin: "4px 0 0" }}>Elige la opción que mejor se adapte a ti</p>
+                  </div>
+                </div>
+
+                {/* Strategy cards */}
+                <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px", display: "flex", flexDirection: "column", gap: 12 }}>
+                  {strategies.map((s, i) => {
+                    const isSelected = purchaseStrategy === s.id;
+                    const saving_vs_cheapest = s.id !== "cheapest" && s.total > compareResult.total ? s.total - compareResult.total : 0;
+                    return (
+                      <motion.div key={s.id}
+                        initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
+                        onClick={() => setPurchaseStrategy(s.id)}
+                        whileHover={{ scale: 1.01 }}
+                        style={{ borderRadius: 16, border: `2px solid ${isSelected ? "#6B7A3A" : "#E8DFD0"}`, background: isSelected ? "#6B7A3A0D" : "white", padding: "18px 20px", cursor: "pointer", position: "relative" }}
+                      >
+                        {s.badge && (
+                          <span style={{ position: "absolute", top: -9, left: 18, background: s.accentColor, color: "white", fontSize: "0.6rem", fontWeight: 700, fontFamily: "system-ui", padding: "2px 8px", borderRadius: 99 }}>
+                            {s.badge}
+                          </span>
+                        )}
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: (s.breakdown || s.missing > 0) ? 10 : 0 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            {s.dotColor
+                              ? <span style={{ width: 13, height: 13, borderRadius: "50%", background: s.dotColor, display: "inline-block", flexShrink: 0, border: "2px solid rgba(0,0,0,0.08)" }} />
+                              : <Zap size={16} color={s.accentColor} strokeWidth={2} />
+                            }
+                            <div>
+                              <p style={{ fontSize: "0.92rem", fontWeight: 700, color: "#3D2B1F", fontFamily: "system-ui", margin: 0 }}>{s.label}</p>
+                              <p style={{ fontSize: "0.75rem", color: "#8C7B6B", fontFamily: "system-ui", margin: "2px 0 0" }}>{s.sublabel}</p>
+                            </div>
+                          </div>
+                          <div style={{ textAlign: "right", flexShrink: 0, marginLeft: 12 }}>
+                            <p style={{ fontSize: "1.3rem", fontWeight: 700, color: isSelected ? s.accentColor : "#3D2B1F", fontFamily: "Georgia, serif", margin: 0 }}>
+                              {s.total.toFixed(2)}€
+                            </p>
+                            {saving_vs_cheapest > 0 && (
+                              <p style={{ fontSize: "0.7rem", color: "#A63D2F", fontFamily: "system-ui", margin: "2px 0 0", fontWeight: 600 }}>
+                                +{saving_vs_cheapest.toFixed(2)}€ más caro
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        {s.breakdown && (
+                          <div style={{ fontSize: "0.75rem", color: "#6B7A3A", fontFamily: "system-ui", background: "#F5F0E8", borderRadius: 8, padding: "6px 10px" }}>
+                            {s.breakdown}
+                          </div>
+                        )}
+                        {s.missing > 0 && (
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(166,61,47,0.06)", borderRadius: 8, padding: "6px 10px", marginTop: s.breakdown ? 6 : 0 }}>
+                            <AlertTriangle size={12} color="#A63D2F" />
+                            <span style={{ fontSize: "0.72rem", color: "#A63D2F", fontFamily: "system-ui" }}>
+                              {s.missing} {s.missing === 1 ? "producto no disponible" : "productos no disponibles"} — se usará el más barato
+                            </span>
+                          </div>
+                        )}
+                      </motion.div>
+                    );
+                  })}
+                </div>
+
+                {/* Footer */}
+                <div style={{ padding: "16px 24px", borderTop: "1px solid #E8DFD0" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, padding: "10px 14px", background: "#F5F0E8", borderRadius: 10 }}>
+                    <span style={{ fontSize: "0.85rem", color: "#8C7B6B", fontFamily: "system-ui" }}>Total estimado:</span>
+                    <span style={{ fontSize: "1.4rem", fontWeight: 700, color: selected.accentColor, fontFamily: "Georgia, serif" }}>
+                      {selected.total.toFixed(2)}€
+                    </span>
+                  </div>
+                  <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                    onClick={handleSavePurchase} disabled={saving}
+                    style={{ width: "100%", padding: 14, background: "#3D2B1F", color: "white", border: "none", borderRadius: 12, fontFamily: "system-ui", fontWeight: 700, fontSize: "1rem", cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.7 : 1 }}>
+                    {saving ? "Guardando..." : "Confirmar y guardar compra"}
+                  </motion.button>
+                </div>
+              </motion.div>
+            </>
+          );
+        })()}
       </AnimatePresence>
 
       {/* Panel detalle producto */}

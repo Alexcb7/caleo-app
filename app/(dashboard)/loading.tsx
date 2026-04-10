@@ -2,11 +2,11 @@
 
 import { motion } from "framer-motion";
 
-export default function Loading() {
+export default function Loading({ background = "#F5F0E8" }: { background?: string }) {
   return (
     <div style={{
       width: "100%", minHeight: "80vh",
-      background: "#F5F0E8",
+      background,
       display: "flex", flexDirection: "column",
       alignItems: "center", justifyContent: "center",
     }}>

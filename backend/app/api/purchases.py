@@ -93,6 +93,15 @@ def complete_purchase(purchase_id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"message": "Compra marcada como completada"}
 
+@router.patch("/{purchase_id}/rename")
+def rename_purchase(purchase_id: int, data: dict, db: Session = Depends(get_db)):
+    purchase = db.query(Purchase).filter(Purchase.id == purchase_id).first()
+    if not purchase:
+        raise HTTPException(status_code=404, detail="Compra no encontrada")
+    purchase.title = data.get("title", purchase.title)
+    db.commit()
+    return {"message": "Nombre actualizado"}
+
 @router.delete("/{purchase_id}")
 def delete_purchase(purchase_id: int, db: Session = Depends(get_db)):
     purchase = db.query(Purchase).filter(Purchase.id == purchase_id).first()

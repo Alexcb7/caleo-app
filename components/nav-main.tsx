@@ -13,6 +13,7 @@ import {
 
 export function NavMain({
   items,
+  onNavigate,
 }: {
   items: {
     title: string
@@ -20,6 +21,7 @@ export function NavMain({
     icon: LucideIcon
     isActive?: boolean
   }[]
+  onNavigate?: (url: string) => boolean
 }) {
   const pathname = usePathname()
 
@@ -36,10 +38,20 @@ export function NavMain({
                 tooltip={item.title}
                 isActive={active}
               >
-                <Link href={item.url}>
-                  <item.icon />
-                  <span>{item.title}</span>
-                </Link>
+                {onNavigate ? (
+                  <button
+                    onClick={() => onNavigate(item.url)}
+                    style={{ background: "none", border: "none", cursor: "pointer", width: "100%", display: "flex", alignItems: "center", gap: 8 }}
+                  >
+                    <item.icon />
+                    <span>{item.title}</span>
+                  </button>
+                ) : (
+                  <Link href={item.url}>
+                    <item.icon />
+                    <span>{item.title}</span>
+                  </Link>
+                )}
               </SidebarMenuButton>
             </SidebarMenuItem>
           )
