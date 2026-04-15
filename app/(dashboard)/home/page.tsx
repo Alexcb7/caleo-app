@@ -411,8 +411,9 @@ export default function HomePage() {
       </motion.div>
 
       {/* Ofertas */}
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
+        style={{ background: "white", border: "1.5px solid #E8DFD0", borderRadius: 16, padding: "20px 24px", boxShadow: "0 2px 12px rgba(61,43,31,0.04)" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
           <h2 style={{ fontSize: "0.82rem", fontWeight: 700, color: "#3D2B1F", fontFamily: "system-ui", margin: 0, display: "flex", alignItems: "center", gap: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>
             <Flame size={15} color="#C17F3A" /> Ofertas destacadas
           </h2>
@@ -427,7 +428,7 @@ export default function HomePage() {
             ))}
           </div>
         ) : ofertas.length === 0 ? (
-          <div style={{ background: "white", border: "1.5px solid #E8DFD0", borderRadius: 16, padding: 32, textAlign: "center", color: "#8C7B6B", fontFamily: "system-ui" }}>
+          <div style={{ padding: "24px 0", textAlign: "center", color: "#8C7B6B", fontFamily: "system-ui" }}>
             No hay ofertas disponibles
           </div>
         ) : (
@@ -435,7 +436,7 @@ export default function HomePage() {
             {ofertas.map((oferta, i) => (
               <motion.div key={oferta.id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.5 + i * 0.05 }}
                 whileHover={{ scale: 1.03, y: -2 }}
-                style={{ background: "white", border: "1.5px solid #E8DFD0", borderRadius: 14, overflow: "hidden", boxShadow: "0 2px 8px rgba(61,43,31,0.04)", cursor: "pointer" }}>
+                style={{ background: "#FDFAF6", border: "1.5px solid #6B7A3A", borderRadius: 14, overflow: "hidden", boxShadow: "0 2px 12px rgba(107,122,58,0.10)", cursor: "pointer" }}>
                 <div style={{ width: "100%", aspectRatio: "1", background: "#F5F0E8", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", position: "relative" }}>
                   {oferta.image_url ? <img src={oferta.image_url} alt={oferta.product_name} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize: "2rem" }}>🏷️</span>}
                   {oferta.original_price && (

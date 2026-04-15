@@ -39,7 +39,7 @@ const CATEGORY_ICONS: Record<string, LucideIcon> = {
 };
 
 type Category = { id: number; name: string; slug: string };
-type Product = { id: number; name: string; image_url: string; category_id: number; supermarkets_count: number };
+type Product = { id: number; name: string; image_url: string; category_id: number; supermarkets_count: number; is_offer?: boolean };
 type CartItem = { product: Product; quantity: number };
 type PriceItem = { supermarket_id: number; supermarket: string; supermarket_slug: string; price: number; original_price: number | null; subtotal: number; is_offer: boolean };
 type CompareItem = { product_id: number; product_name: string; image_url: string; quantity: number; prices: PriceItem[]; cheapest: PriceItem; not_found: boolean };
@@ -481,6 +481,11 @@ export default function CompraPage() {
             return (
               <motion.div key={product.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
                 style={{ background: "white", border: `1.5px solid ${hasTwo ? "#6B7A3A" : "#E8DFD0"}`, borderRadius: 16, padding: 14, display: "flex", flexDirection: "column", gap: 12, boxShadow: hasTwo ? "0 2px 12px rgba(107,122,58,0.12)" : "0 2px 8px rgba(61,43,31,0.05)", position: "relative" }}>
+                {product.is_offer && (
+                  <div style={{ position: "absolute", top: 10, left: 10, background: "#C17F3A", borderRadius: 6, padding: "3px 7px", zIndex: 1 }}>
+                    <span style={{ fontSize: "0.62rem", color: "white", fontFamily: "system-ui", fontWeight: 700 }}>OFERTA</span>
+                  </div>
+                )}
                 {hasTwo && mode === "normal" && (
                   <div style={{ position: "absolute", top: 10, right: 10, background: "#6B7A3A", borderRadius: 6, padding: "3px 6px", display: "flex", alignItems: "center", gap: 3, zIndex: 1 }}>
                     <GitCompare size={10} color="white" />

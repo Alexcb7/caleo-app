@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Plus, Minus, TrendingUp, ShoppingCart, Tag } from "lucide-react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -27,6 +28,8 @@ type ProductDetail = {
   prices: PriceInfo[];
 };
 
+type HistoryEntry = { supermarket: string; slug: string; data: { date: string; price: number; is_offer: boolean }[] };
+
 type Props = {
   productId: number | null;
   onClose: () => void;
@@ -35,20 +38,30 @@ type Props = {
   zIndexBase?: number;
 };
 
+const SM_COLORS = ["#6B7A3A", "#C17F3A", "#B8A06A", "#3D2B1F"];
+
 export function ProductPanel({ productId, onClose, onAddToCart, cartQuantity, zIndexBase = 200 }: Props) {
   const [product, setProduct] = useState<ProductDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [quantity, setQuantity] = useState(1);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [hiddenSupers, setHiddenSupers] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!productId) return;
     setLoading(true);
     setProduct(null);
+    setHistory([]);
+    setHiddenSupers(new Set());
     setQuantity(cartQuantity || 1);
     fetch(`${API_URL}/products/${productId}`)
       .then(r => r.json())
       .then(data => { setProduct(data); setLoading(false); })
       .catch(() => setLoading(false));
+    fetch(`${API_URL}/products/${productId}/price-history`)
+      .then(r => r.json())
+      .then(data => setHistory(Array.isArray(data) ? data : []))
+      .catch(() => setHistory([]));
   }, [productId]);
 
   const cheapest = product?.prices?.length
@@ -174,20 +187,71 @@ export function ProductPanel({ productId, onClose, onAddToCart, cartQuantity, zI
                     </div>
                   </div>
 
-                  {/* Chart historial — placeholder elegante */}
+                  {/* Historial de precios */}
                   <div style={{ padding: "20px 24px" }}>
-                    <h3 style={{ fontSize: "0.85rem", fontWeight: 700, color: "#3D2B1F", fontFamily: "system-ui", margin: "0 0 14px", textTransform: "uppercase", letterSpacing: "0.05em" }}>Historial de precios</h3>
-                    <div style={{ background: "#F5F0E8", borderRadius: 14, padding: "32px 24px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
-                      {/* Gráfica simulada */}
-                      <svg width="100%" height="80" viewBox="0 0 300 80" style={{ opacity: 0.25 }}>
-                        <polyline points="0,60 50,50 100,55 150,35 200,40 250,30 300,35" fill="none" stroke="#6B7A3A" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                        <polyline points="0,70 50,65 100,68 150,50 200,55 250,48 300,52" fill="none" stroke="#C17F3A" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                      <TrendingUp size={20} color="#B8A06A" />
-                      <p style={{ fontSize: "0.82rem", color: "#8C7B6B", fontFamily: "system-ui", margin: 0, textAlign: "center", lineHeight: 1.5 }}>
-                        El historial de precios estará<br />disponible próximamente
-                      </p>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 14 }}>
+                      <TrendingUp size={14} color="#B8A06A" />
+                      <h3 style={{ fontSize: "0.85rem", fontWeight: 700, color: "#3D2B1F", fontFamily: "system-ui", margin: 0, textTransform: "uppercase", letterSpacing: "0.05em" }}>Historial de precios</h3>
                     </div>
+                    {history.length === 0 ? (
+                      <div style={{ background: "#F5F0E8", borderRadius: 14, padding: "28px 24px", textAlign: "center", color: "#8C7B6B", fontFamily: "system-ui", fontSize: "0.82rem" }}>
+                        Sin historial disponible aún
+                      </div>
+                    ) : (() => {
+                      const allDates = [...new Set(history.flatMap(s => s.data.map(d => d.date)))];
+                      const chartData = allDates.map(date => {
+                        const point: Record<string, any> = { date };
+                        history.forEach(sm => {
+                          const entry = sm.data.find(d => d.date === date);
+                          if (entry) {
+                            point[sm.supermarket] = entry.price;
+                          } else if (sm.data.length <= 1 && sm.data[0]) {
+                            // Sin historial: precio actual como línea plana
+                            point[sm.supermarket] = sm.data[0].price;
+                          }
+                        });
+                        return point;
+                      });
+                      const toggleSuper = (name: string) =>
+                        setHiddenSupers(prev => {
+                          const next = new Set(prev);
+                          next.has(name) ? next.delete(name) : next.add(name);
+                          return next;
+                        });
+                      return (
+                        <div>
+                          {/* Toggles */}
+                          <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+                            {history.map((sm, i) => {
+                              const hidden = hiddenSupers.has(sm.supermarket);
+                              const color = SM_COLORS[i % SM_COLORS.length];
+                              return (
+                                <button key={sm.supermarket} onClick={() => toggleSuper(sm.supermarket)}
+                                  style={{ display: "flex", alignItems: "center", gap: 5, padding: "4px 10px", borderRadius: 20, border: `1.5px solid ${hidden ? "#E8DFD0" : color}`, background: hidden ? "white" : `${color}18`, cursor: "pointer", fontFamily: "system-ui", fontSize: "0.72rem", fontWeight: 600, color: hidden ? "#8C7B6B" : color, transition: "all 0.15s" }}>
+                                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: hidden ? "#E8DFD0" : color, flexShrink: 0 }} />
+                                  {sm.supermarket}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          <ResponsiveContainer width="100%" height={150}>
+                            <LineChart data={chartData}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="#F5F0E8" vertical={false} />
+                              <XAxis dataKey="date" tick={{ fontSize: 10, fontFamily: "system-ui", fill: "#8C7B6B" }} axisLine={false} tickLine={false} />
+                              <YAxis tick={{ fontSize: 10, fontFamily: "system-ui", fill: "#8C7B6B" }} axisLine={false} tickLine={false} tickFormatter={v => `${v}€`} width={40} />
+                              <Tooltip formatter={(v: any, name: any) => [`${(v as number).toFixed(2)}€`, name]} contentStyle={{ borderRadius: 10, border: "1.5px solid #E8DFD0", fontFamily: "system-ui", fontSize: 12 }} isAnimationActive={false} />
+                              {history.map((sm, i) =>
+                                hiddenSupers.has(sm.supermarket) ? null : (
+                                  <Line key={sm.supermarket} type="monotone" dataKey={sm.supermarket}
+                                    stroke={SM_COLORS[i % SM_COLORS.length]}
+                                    strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} connectNulls />
+                                )
+                              )}
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
 
