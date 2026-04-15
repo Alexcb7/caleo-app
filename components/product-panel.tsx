@@ -187,7 +187,8 @@ export function ProductPanel({ productId, onClose, onAddToCart, cartQuantity, zI
                     </div>
                   </div>
 
-                  {/* Historial de precios */}
+                  {/* Historial de precios — solo si hay variación real de precio */}
+                  {(product.prices.some(p => p.is_offer) || history.some(sm => sm.data.length > 1)) && (
                   <div style={{ padding: "20px 24px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 14 }}>
                       <TrendingUp size={14} color="#B8A06A" />
@@ -199,19 +200,24 @@ export function ProductPanel({ productId, onClose, onAddToCart, cartQuantity, zI
                       </div>
                     ) : (() => {
                       const allDates = [...new Set(history.flatMap(s => s.data.map(d => d.date)))];
-                      const chartData = allDates.map(date => {
+                      const buildPoint = (date: string) => {
                         const point: Record<string, any> = { date };
                         history.forEach(sm => {
                           const entry = sm.data.find(d => d.date === date);
                           if (entry) {
                             point[sm.supermarket] = entry.price;
-                          } else if (sm.data.length <= 1 && sm.data[0]) {
-                            // Sin historial: precio actual como línea plana
+                          } else if (sm.data[0]) {
+                            // Sin entrada para esta fecha: extender con el precio más cercano
                             point[sm.supermarket] = sm.data[0].price;
                           }
                         });
                         return point;
-                      });
+                      };
+                      const chartData = allDates.map(buildPoint);
+                      // Si solo hay un punto no se puede trazar línea — añadir punto anterior igual
+                      if (chartData.length === 1) {
+                        chartData.unshift({ ...chartData[0], date: "Anterior" });
+                      }
                       const toggleSuper = (name: string) =>
                         setHiddenSupers(prev => {
                           const next = new Set(prev);
@@ -253,6 +259,7 @@ export function ProductPanel({ productId, onClose, onAddToCart, cartQuantity, zI
                       );
                     })()}
                   </div>
+                  )}
                 </div>
 
                 {/* Footer añadir */}

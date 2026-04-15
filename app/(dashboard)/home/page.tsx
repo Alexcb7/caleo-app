@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
-import { ShoppingCart, TrendingDown, Tag, List, ArrowRight, Flame, TrendingUp, Wallet, Calendar, CalendarDays, CalendarRange, BarChart3, Settings } from "lucide-react";
+import { ShoppingCart, TrendingDown, Tag, List, ArrowRight, Flame, TrendingUp, Wallet, Calendar, CalendarDays, CalendarRange, Settings, Bell, AlertTriangle, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -16,6 +16,26 @@ type Stats = { total_spent: number; total_purchases: number; monthly_spent: numb
 type History = { chart_data: { label: string; gasto: number; count: number; ticket_medio: number }[]; supermarket_totals: Record<string, number>; period_spent: number; ahorro_estimado: number };
 type Oferta = { id: number; product_name: string; image_url: string; supermarket: string; price: number; original_price: number; category: string };
 type Period = "dia" | "semana" | "mes" | "año";
+type Notificacion = { id: string; type: string; title: string; message: string; icon: string; color: string; created_at: string };
+
+const NOTIF_READ_KEY = "caleo_notif_read";
+
+function getReadIds(): Set<string> {
+  try { return new Set(JSON.parse(localStorage.getItem(NOTIF_READ_KEY) || "[]")); } catch { return new Set(); }
+}
+function saveReadIds(ids: Set<string>) {
+  localStorage.setItem(NOTIF_READ_KEY, JSON.stringify([...ids]));
+}
+
+function NotifIcon({ type }: { type: string }) {
+  const s = { width: 16, height: 16 };
+  if (type === "oferta") return <Tag style={s} />;
+  if (type === "presupuesto_superado") return <AlertTriangle style={s} />;
+  if (type === "presupuesto_aviso") return <TrendingUp style={s} />;
+  if (type === "compra_pendiente") return <ShoppingBag style={s} />;
+  if (type === "precio_bajado") return <TrendingDown style={s} />;
+  return <Bell style={s} />;
+}
 
 const SM_COLORS = ["#6B7A3A", "#B8A06A", "#C17F3A", "#3D2B1F"];
 
@@ -68,6 +88,12 @@ export default function HomePage() {
   const [period, setPeriod] = useState<Period>("semana");
   const [historyLoading, setHistoryLoading] = useState(false);
   const historyCache = useRef<Partial<Record<Period, History>>>({});
+  const [notifs, setNotifs] = useState<Notificacion[]>([]);
+  const notifsRef = useRef<Notificacion[]>([]);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [readIds, setReadIds] = useState<Set<string>>(new Set());
+  const notifRef = useRef<HTMLDivElement>(null);
+  const notifOpenRef = useRef(false);
 
   useEffect(() => {
     const h = new Date().getHours();
@@ -84,7 +110,9 @@ export default function HomePage() {
         // Prefetch del resto de periodos en segundo plano, sin bloquear la UI
         prefetchRemainingPeriods(u.id);
       });
+      fetchNotificaciones(u.id);
     }
+    setReadIds(getReadIds());
     fetchOfertas();
   }, []);
 
@@ -92,6 +120,21 @@ export default function HomePage() {
   useEffect(() => {
     if (user) fetchHistory(user.id, period);
   }, [period, user]);
+
+  // Mantener ref sincronizado con el estado
+  useEffect(() => { notifOpenRef.current = notifOpen; }, [notifOpen]);
+
+  // Cerrar dropdown de notificaciones al hacer click fuera
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        if (notifOpenRef.current) markAllRead();
+        setNotifOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   const fetchStats = async (userId: number) => {
     try {
@@ -139,6 +182,22 @@ export default function HomePage() {
     });
   };
 
+  const fetchNotificaciones = async (userId: number) => {
+    try {
+      const res = await fetch(`${API_URL}/notificaciones/${userId}`);
+      const data = await res.json();
+      const list = data.notificaciones || [];
+      notifsRef.current = list;
+      setNotifs(list);
+    } catch {}
+  };
+
+  const markAllRead = () => {
+    const ids = new Set(notifsRef.current.map(n => n.id));
+    saveReadIds(ids);
+    setReadIds(ids);
+  };
+
   const fetchOfertas = async () => {
     try {
       const res = await fetch(`${API_URL}/ofertas/general`);
@@ -178,13 +237,84 @@ export default function HomePage() {
             <p style={{ fontSize: "0.9rem", color: "#8C7B6B", margin: "6px 0 0", fontFamily: "system-ui" }}>Resumen de tu actividad</p>
           </div>
         </div>
-        <div style={{ display: "flex", background: "white", border: "1.5px solid #E8DFD0", borderRadius: 12, padding: 4, gap: 2 }}>
-          {(["dia", "semana", "mes", "año"] as Period[]).map(p => (
-            <button key={p} onClick={() => setPeriod(p)}
-              style={{ padding: "8px 18px", borderRadius: 9, border: "none", background: period === p ? "#6B7A3A" : "transparent", color: period === p ? "white" : "#8C7B6B", fontSize: "0.82rem", fontFamily: "system-ui", fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}>
-              {p === "dia" ? "Día" : p === "semana" ? "Semana" : p === "mes" ? "Mes" : "Año"}
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {/* Campana de notificaciones */}
+          <div ref={notifRef} style={{ position: "relative" }}>
+            <button
+              onClick={() => { if (notifOpen) { markAllRead(); setNotifOpen(false); } else { setNotifOpen(true); } }}
+              style={{ position: "relative", width: 40, height: 40, borderRadius: 10, border: "1.5px solid #E8DFD0", background: "white", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#6B7A3A", flexShrink: 0 }}
+            >
+              <Bell size={18} />
+              {notifs.filter(n => !readIds.has(n.id)).length > 0 && (
+                <span style={{ position: "absolute", top: -5, right: -5, background: "#6B7A3A", color: "white", borderRadius: "50%", width: 18, height: 18, fontSize: "0.65rem", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "system-ui", border: "2px solid white" }}>
+                  {notifs.filter(n => !readIds.has(n.id)).length > 9 ? "9+" : notifs.filter(n => !readIds.has(n.id)).length}
+                </span>
+              )}
             </button>
-          ))}
+
+            {/* Dropdown de notificaciones */}
+            {notifOpen && (
+              <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, width: 360, background: "white", border: "1.5px solid #E8DFD0", borderRadius: 18, boxShadow: "0 12px 40px rgba(61,43,31,0.15)", zIndex: 100, overflow: "hidden" }}>
+
+                {/* Cabecera */}
+                <div style={{ background: "linear-gradient(135deg, #6B7A3A 0%, #8A9A50 100%)", padding: "16px 18px 14px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <Bell size={15} color="rgba(255,255,255,0.9)" />
+                    <span style={{ fontSize: "0.88rem", fontWeight: 700, color: "white", fontFamily: "system-ui", letterSpacing: "0.01em" }}>Notificaciones</span>
+                  </div>
+                  {notifs.length > 0 && (
+                    <span style={{ fontSize: "0.7rem", background: "rgba(255,255,255,0.22)", color: "white", fontFamily: "system-ui", fontWeight: 700, borderRadius: 20, padding: "3px 9px" }}>
+                      {notifs.length} avisos
+                    </span>
+                  )}
+                </div>
+
+                {/* Lista */}
+                <div style={{ maxHeight: 400, overflowY: "auto" }}>
+                  {notifs.length === 0 ? (
+                    <div style={{ padding: "40px 20px", textAlign: "center" }}>
+                      <div style={{ width: 52, height: 52, borderRadius: "50%", background: "#F5F0E8", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px" }}>
+                        <Bell size={22} color="#C4B49A" />
+                      </div>
+                      <p style={{ fontSize: "0.85rem", fontWeight: 600, color: "#3D2B1F", fontFamily: "system-ui", margin: "0 0 4px" }}>Todo al día</p>
+                      <p style={{ fontSize: "0.75rem", color: "#8C7B6B", fontFamily: "system-ui", margin: 0 }}>No tienes avisos pendientes</p>
+                    </div>
+                  ) : (
+                    notifs.map((n, i) => {
+                      const unread = !readIds.has(n.id);
+                      return (
+                        <div key={n.id} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "13px 16px", borderBottom: i < notifs.length - 1 ? "1px solid #F5F0E8" : "none", background: unread ? `${n.color}07` : "white", borderLeft: `3px solid ${unread ? n.color : "transparent"}`, transition: "background 0.2s" }}>
+                          {/* Icono */}
+                          <div style={{ width: 36, height: 36, borderRadius: 10, background: `${n.color}18`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: n.color, border: `1px solid ${n.color}28` }}>
+                            <NotifIcon type={n.type} />
+                          </div>
+                          {/* Texto */}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+                              <p style={{ fontSize: "0.78rem", fontWeight: 700, color: "#3D2B1F", fontFamily: "system-ui", margin: 0 }}>{n.title}</p>
+                              {unread && <span style={{ width: 6, height: 6, borderRadius: "50%", background: n.color, flexShrink: 0 }} />}
+                            </div>
+                            <p style={{ fontSize: "0.72rem", color: "#8C7B6B", fontFamily: "system-ui", margin: 0, lineHeight: 1.5 }}>{n.message}</p>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+              </div>
+            )}
+          </div>
+
+          {/* Filtro de periodo */}
+          <div style={{ display: "flex", background: "white", border: "1.5px solid #E8DFD0", borderRadius: 12, padding: 4, gap: 2 }}>
+            {(["dia", "semana", "mes", "año"] as Period[]).map(p => (
+              <button key={p} onClick={() => setPeriod(p)}
+                style={{ padding: "8px 18px", borderRadius: 9, border: "none", background: period === p ? "#6B7A3A" : "transparent", color: period === p ? "white" : "#8C7B6B", fontSize: "0.82rem", fontFamily: "system-ui", fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}>
+                {p === "dia" ? "Día" : p === "semana" ? "Semana" : p === "mes" ? "Mes" : "Año"}
+              </button>
+            ))}
+          </div>
         </div>
       </motion.div>
 
