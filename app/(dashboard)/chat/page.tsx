@@ -4,6 +4,8 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Send, Bot, User, Sparkles, ShoppingCart, List, RefreshCw } from "lucide-react";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
 type Message = {
   id: string;
   role: "user" | "assistant";
@@ -12,10 +14,11 @@ type Message = {
 };
 
 const SUGGESTIONS = [
-  "¿Qué productos son más baratos en DIA esta semana?",
-  "Hazme una lista de la compra para una semana para 2 personas con 80€",
-  "¿Cuál es el aceite de oliva más barato disponible?",
-  "Compara los precios de productos lácteos entre Mercadona y DIA",
+  "¿Qué productos están en oferta esta semana?",
+  "Hazme una paella para 8 personas y dime qué necesito",
+  "Lista equilibrada para 2 personas con 60€ para una semana",
+  "¿Cómo uso el modo Super Ahorro?",
+  "¿Dónde es más barato el aceite de oliva?",
 ];
 
 export default function ChatPage() {
@@ -23,7 +26,7 @@ export default function ChatPage() {
     {
       id: "welcome",
       role: "assistant",
-      content: "¡Hola! Soy tu asistente de compras Caleo. Puedo ayudarte a encontrar los mejores precios, comparar productos entre supermercados o crear listas de la compra inteligentes. ¿En qué te puedo ayudar hoy?",
+      content: "¡Buenas! Soy Paco, el asistente de Caleo 👴 Llevo toda la vida en esto de los mercados y te puedo ayudar a encontrar los mejores precios, hacer listas de la compra, sugerirte recetas o explicarte cómo funciona la app. ¿Qué necesitas, hijo?",
       timestamp: new Date(),
     }
   ]);
@@ -36,6 +39,11 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  const getUserId = () => {
+    const stored = localStorage.getItem("user");
+    return stored ? JSON.parse(stored).id : 1;
+  };
+
   const handleSend = async () => {
     if (!input.trim() || loading) return;
 
@@ -46,21 +54,43 @@ export default function ChatPage() {
       timestamp: new Date(),
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
     setInput("");
     setLoading(true);
 
-    // TODO: conectar con el backend
-    setTimeout(() => {
-      const assistantMessage: Message = {
+    try {
+      // Solo enviamos el historial real sin el mensaje de bienvenida
+      const history = updatedMessages
+        .filter(m => m.id !== "welcome")
+        .map(m => ({ role: m.role, content: m.content }));
+
+      const res = await fetch(`${API_URL}/chat/message`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: history,
+          user_id: getUserId(),
+        }),
+      });
+
+      const data = await res.json();
+      setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: "Estoy procesando tu consulta... El Chat IA estará completamente disponible próximamente. Por ahora puedes explorar los productos desde La Compra.",
+        content: data.content,
         timestamp: new Date(),
-      };
-      setMessages(prev => [...prev, assistantMessage]);
-      setLoading(false);
-    }, 1200);
+      }]);
+    } catch {
+      setMessages(prev => [...prev, {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: "Lo siento, no he podido conectar con el servidor. Inténtalo de nuevo.",
+        timestamp: new Date(),
+      }]);
+    }
+
+    setLoading(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -79,7 +109,7 @@ export default function ChatPage() {
     setMessages([{
       id: "welcome",
       role: "assistant",
-      content: "¡Hola! Soy tu asistente de compras Caleo. Puedo ayudarte a encontrar los mejores precios, comparar productos entre supermercados o crear listas de la compra inteligentes. ¿En qué te puedo ayudar hoy?",
+      content: "¡Buenas! Soy Paco, el asistente de Caleo 👴 Llevo toda la vida en esto de los mercados y te puedo ayudar a encontrar los mejores precios, hacer listas de la compra, sugerirte recetas o explicarte cómo funciona la app. ¿Qué necesitas, hijo?",
       timestamp: new Date(),
     }]);
   };
@@ -99,8 +129,12 @@ export default function ChatPage() {
           <div>
             <h1 style={{ fontSize: "1rem", fontWeight: 700, color: "#3D2B1F", fontFamily: "Georgia, serif", margin: 0 }}>Chat IA</h1>
             <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-              <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#6B7A3A" }} />
-              <span style={{ fontSize: "0.72rem", color: "#8C7B6B", fontFamily: "system-ui" }}>Asistente de compras Caleo</span>
+              <motion.div
+                animate={{ opacity: [1, 0.3, 1] }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+                style={{ width: 6, height: 6, borderRadius: "50%", background: "#6B7A3A" }}
+              />
+              <span style={{ fontSize: "0.72rem", color: "#8C7B6B", fontFamily: "system-ui" }}>Llama 3.3 · Groq · Paco</span>
             </div>
           </div>
         </div>
@@ -113,8 +147,6 @@ export default function ChatPage() {
 
       {/* Mensajes */}
       <div style={{ flex: 1, overflowY: "auto", padding: "24px", display: "flex", flexDirection: "column", gap: 16 }}>
-
-        {/* Chips de capacidades — solo si es el primer mensaje */}
         {messages.length === 1 && (
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
             style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center", marginBottom: 8 }}>
@@ -131,30 +163,14 @@ export default function ChatPage() {
           </motion.div>
         )}
 
-        {messages.map((msg, i) => (
-          <motion.div
-            key={msg.id}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            style={{ display: "flex", gap: 10, alignItems: "flex-end", flexDirection: msg.role === "user" ? "row-reverse" : "row" }}
-          >
-            {/* Avatar */}
+        {messages.map((msg) => (
+          <motion.div key={msg.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}
+            style={{ display: "flex", gap: 10, alignItems: "flex-end", flexDirection: msg.role === "user" ? "row-reverse" : "row" }}>
             <div style={{ width: 32, height: 32, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: msg.role === "assistant" ? "linear-gradient(135deg, #6B7A3A, #8A9B4A)" : "#3D2B1F" }}>
-              {msg.role === "assistant"
-                ? <Bot size={15} color="white" />
-                : <User size={15} color="white" />}
+              {msg.role === "assistant" ? <Bot size={15} color="white" /> : <User size={15} color="white" />}
             </div>
-
-            {/* Burbuja */}
             <div style={{ maxWidth: "70%" }}>
-              <div style={{
-                padding: "12px 16px",
-                borderRadius: msg.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
-                background: msg.role === "user" ? "#3D2B1F" : "white",
-                border: msg.role === "assistant" ? "1.5px solid #E8DFD0" : "none",
-                boxShadow: "0 2px 8px rgba(61,43,31,0.06)",
-              }}>
+              <div style={{ padding: "12px 16px", borderRadius: msg.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px", background: msg.role === "user" ? "#3D2B1F" : "white", border: msg.role === "assistant" ? "1.5px solid #E8DFD0" : "none", boxShadow: "0 2px 8px rgba(61,43,31,0.06)" }}>
                 <p style={{ fontSize: "0.9rem", color: msg.role === "user" ? "white" : "#3D2B1F", fontFamily: "system-ui", margin: 0, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
                   {msg.content}
                 </p>
@@ -166,7 +182,6 @@ export default function ChatPage() {
           </motion.div>
         ))}
 
-        {/* Typing indicator */}
         <AnimatePresence>
           {loading && (
             <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}
@@ -176,11 +191,8 @@ export default function ChatPage() {
               </div>
               <div style={{ padding: "14px 18px", background: "white", border: "1.5px solid #E8DFD0", borderRadius: "18px 18px 18px 4px", boxShadow: "0 2px 8px rgba(61,43,31,0.06)", display: "flex", gap: 5, alignItems: "center" }}>
                 {[0, 1, 2].map(i => (
-                  <motion.div key={i}
-                    animate={{ y: [0, -5, 0] }}
-                    transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15 }}
-                    style={{ width: 7, height: 7, borderRadius: "50%", background: "#B8A06A" }}
-                  />
+                  <motion.div key={i} animate={{ y: [0, -5, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15 }}
+                    style={{ width: 7, height: 7, borderRadius: "50%", background: "#B8A06A" }} />
                 ))}
               </div>
             </motion.div>
@@ -207,11 +219,7 @@ export default function ChatPage() {
       {/* Input */}
       <div style={{ padding: "12px 24px 20px", background: "#F5F0E8", borderTop: "1px solid #E8DFD0", flexShrink: 0 }}>
         <div style={{ display: "flex", gap: 10, alignItems: "center", background: "white", borderRadius: 16, padding: "10px 10px 10px 16px", border: "1.5px solid #6B7A3A" }}>
-          <textarea
-            ref={inputRef}
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
+          <textarea ref={inputRef} value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKeyDown}
             placeholder="Pregúntame sobre precios, productos o listas..."
             rows={1}
             style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: "0.92rem", color: "#3D2B1F", fontFamily: "system-ui", resize: "none", maxHeight: 120, lineHeight: 1.5 }}
@@ -221,12 +229,9 @@ export default function ChatPage() {
               t.style.height = `${Math.min(t.scrollHeight, 120)}px`;
             }}
           />
-          <motion.button
-            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-            onClick={handleSend}
+          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={handleSend}
             disabled={!input.trim() || loading}
-            style={{ width: 38, height: 38, background: "#6B7A3A", border: "none", borderRadius: 10, cursor: input.trim() && !loading ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
-          >
+            style={{ width: 38, height: 38, background: "#6B7A3A", border: "none", borderRadius: 10, cursor: input.trim() && !loading ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <Send size={16} color="white" />
           </motion.button>
         </div>

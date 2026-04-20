@@ -215,7 +215,7 @@ export default function MisComprasPage() {
     <div style={{ padding: "24px" }}>
 
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+      <div className="page-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
         <div>
           <h1 style={{ fontSize: "1.6rem", fontWeight: 700, color: "#3D2B1F", fontFamily: "Georgia, serif", margin: 0 }}>Mis Compras</h1>
           <p style={{ fontSize: "0.85rem", color: "#8C7B6B", margin: "4px 0 0", fontFamily: "system-ui" }}>Historial y seguimiento de tus compras</p>
@@ -231,7 +231,7 @@ export default function MisComprasPage() {
       </div>
 
       {/* Stats */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14, marginBottom: 24 }}>
+      <div className="stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14, marginBottom: 24 }}>
         {[
           { label: "Total compras", value: purchases.length, color: "#3D2B1F" },
           { label: "Pendientes", value: pendientes, color: "#C17F3A" },
@@ -246,7 +246,7 @@ export default function MisComprasPage() {
       </div>
 
       {/* Filtros */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+      <div className="filters-row" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
         {/* Estado — izquierda */}
         <div style={{ display: "flex", gap: 8 }}>
           {([
@@ -309,7 +309,7 @@ export default function MisComprasPage() {
               transition={{ delay: i * 0.04 }}
               onClick={() => fetchDetail(purchase.id)}
               whileHover={{ scale: 1.005 }}
-              style={{ background: "white", border: `1.5px solid ${purchase.is_completed ? "#E8DFD0" : "#6B7A3A20"}`, borderRadius: 16, padding: "16px 20px", cursor: "pointer", display: "flex", alignItems: "center", gap: 16, boxShadow: "0 2px 8px rgba(61,43,31,0.04)" }}
+              className="purchase-card" style={{ background: "white", border: `1.5px solid ${purchase.is_completed ? "#E8DFD0" : "#6B7A3A20"}`, borderRadius: 16, padding: "16px 20px", cursor: "pointer", display: "flex", alignItems: "center", gap: 16, boxShadow: "0 2px 8px rgba(61,43,31,0.04)" }}
             >
               {/* Checkbox */}
               <div
@@ -346,7 +346,7 @@ export default function MisComprasPage() {
               </div>
 
               {/* Acciones */}
-              <div style={{ display: "flex", gap: 6, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+              <div className="purchase-card-actions" style={{ display: "flex", gap: 6, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
                 <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
                   onClick={(e) => openRename(purchase, e)}
                   style={{ width: 32, height: 32, background: "#B8A06A10", border: "1px solid #B8A06A40", borderRadius: 8, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -384,7 +384,7 @@ export default function MisComprasPage() {
             <motion.div
               initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: 480, background: "white", zIndex: 201, display: "flex", flexDirection: "column", boxShadow: "-8px 0 40px rgba(61,43,31,0.15)" }}
+              className="side-panel" style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: 480, background: "white", zIndex: 201, display: "flex", flexDirection: "column", boxShadow: "-8px 0 40px rgba(61,43,31,0.15)" }}
             >
               {detailLoading ? (
                 <div style={{ flex: 1 }}>
@@ -487,7 +487,7 @@ export default function MisComprasPage() {
             <motion.div
               initial={{ opacity: 0, scale: 0.92, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.92 }} transition={{ type: "spring", damping: 20, stiffness: 200 }}
-              style={{ position: "fixed", top: "20%", left: "50%", transform: "translate(-50%, -50%)", width: 440, background: "white", borderRadius: 24, padding: "36px", zIndex: 301, boxShadow: "0 24px 80px rgba(61,43,31,0.2)" }}
+              className="center-modal" style={{ position: "fixed", top: "20%", left: "50%", transform: "translate(-50%, -50%)", width: 440, background: "white", borderRadius: 24, padding: "36px", zIndex: 301, boxShadow: "0 24px 80px rgba(61,43,31,0.2)" }}
             >
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
                 <h2 style={{ fontFamily: "Georgia, serif", fontSize: "1.3rem", color: "#3D2B1F", margin: 0 }}>Guardar como lista</h2>
@@ -549,7 +549,7 @@ export default function MisComprasPage() {
             <motion.div
               initial={{ opacity: 0, scale: 0.92, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.92 }} transition={{ type: "spring", damping: 20, stiffness: 200 }}
-              style={{ position: "fixed", top: "30%", left: "50%", transform: "translate(-50%, -50%)", width: 420, background: "white", borderRadius: 24, padding: "32px", zIndex: 301, boxShadow: "0 24px 80px rgba(61,43,31,0.2)" }}
+              className="center-modal" style={{ position: "fixed", top: "30%", left: "50%", transform: "translate(-50%, -50%)", width: 420, background: "white", borderRadius: 24, padding: "32px", zIndex: 301, boxShadow: "0 24px 80px rgba(61,43,31,0.2)" }}
             >
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
                 <h2 style={{ fontFamily: "Georgia, serif", fontSize: "1.2rem", color: "#3D2B1F", margin: 0 }}>Editar nombre</h2>
@@ -581,7 +581,21 @@ export default function MisComprasPage() {
         )}
       </AnimatePresence>
 
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @media (max-width: 768px) {
+          .page-header { flex-wrap: wrap !important; gap: 12px !important; }
+          .stats-grid { grid-template-columns: repeat(3, 1fr) !important; }
+          .filters-row { flex-direction: column !important; align-items: flex-start !important; gap: 8px !important; }
+          .side-panel { width: 100vw !important; }
+          .center-modal { width: calc(100vw - 32px) !important; padding: 24px 20px !important; }
+          .purchase-card { padding: 12px 16px !important; gap: 10px !important; }
+        }
+        @media (max-width: 480px) {
+          .stats-grid { grid-template-columns: 1fr !important; }
+          .purchase-card-actions { display: none !important; }
+        }
+      `}</style>
     </div>
   );
 }

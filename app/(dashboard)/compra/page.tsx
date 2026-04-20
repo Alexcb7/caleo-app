@@ -234,7 +234,7 @@ export default function CompraPage() {
   const visibleProducts = mode === "ahorro" ? products.filter(p => p.supermarkets_count >= 2) : products;
 
   return (
-    <div style={{ padding: "24px", position: "relative" }}>
+    <div className="compra-page" style={{ padding: "24px", position: "relative" }}>
 
       {/* Popup modo */}
       <AnimatePresence>
@@ -245,7 +245,7 @@ export default function CompraPage() {
             <motion.div
               initial={{ opacity: 0, scale: 0.92, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.92 }} transition={{ type: "spring", damping: 20, stiffness: 200 }}
-              style={{ position: "fixed", top: "20%", left: "50%", transform: "translate(-50%, -50%)", width: 480, background: "white", borderRadius: 24, padding: "40px 36px", zIndex: 301, boxShadow: "0 24px 80px rgba(61,43,31,0.2)" }}
+              className="compra-modal-lg" style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, margin: "auto", height: "fit-content", width: 480, background: "white", borderRadius: 24, padding: "40px 36px", zIndex: 301, boxShadow: "0 24px 80px rgba(61,43,31,0.2)" }}
             >
               <button
                 onClick={() => { setModePopup(false); router.push("/home"); }}
@@ -293,7 +293,7 @@ export default function CompraPage() {
             <motion.div
               initial={{ opacity: 0, scale: 0.92, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.92 }} transition={{ type: "spring", damping: 20, stiffness: 200 }}
-              style={{ position: "fixed", top: "10%", left: "50%", transform: "translate(-50%, -50%)", width: 400, background: "white", borderRadius: 24, padding: "40px 36px", zIndex: 301, boxShadow: "0 24px 80px rgba(61,43,31,0.2)" }}
+              className="compra-modal-md" style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, margin: "auto", height: "fit-content", width: 400, background: "white", borderRadius: 24, padding: "40px 36px", zIndex: 301, boxShadow: "0 24px 80px rgba(61,43,31,0.2)" }}
             >
               <div style={{ textAlign: "center", marginBottom: 28 }}>
                 <div style={{ width: 56, height: 56, background: "#F5F0E8", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", border: "2px solid #E8DFD0" }}>
@@ -361,7 +361,7 @@ export default function CompraPage() {
       )}
 
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+      <div className="compra-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
             <h1 style={{ fontSize: "1.6rem", fontWeight: 700, color: "#3D2B1F", fontFamily: "Georgia, serif", margin: 0 }}>La Compra</h1>
@@ -474,7 +474,7 @@ export default function CompraPage() {
           {query || selectedCategory ? "No se encontraron productos" : "Escribe algo para buscar productos"}
         </div>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))", gap: 16 }}>
+        <div className="products-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))", gap: 16 }}>
           {visibleProducts.map((product, i) => {
             const qty = getQuantity(product.id);
             const hasTwo = product.supermarkets_count >= 2;
@@ -529,7 +529,7 @@ export default function CompraPage() {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setCartOpen(false)}
               style={{ position: "fixed", inset: 0, background: "rgba(61,43,31,0.4)", zIndex: 200 }} />
             <motion.div initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: 360, background: "white", zIndex: 201, display: "flex", flexDirection: "column", boxShadow: "-8px 0 40px rgba(61,43,31,0.15)" }}>
+              className="side-panel" style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: 360, background: "white", zIndex: 201, display: "flex", flexDirection: "column", boxShadow: "-8px 0 40px rgba(61,43,31,0.15)" }}>
               <div style={{ padding: "20px 24px", borderBottom: "1px solid #E8DFD0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <div>
                   <h2 style={{ fontFamily: "Georgia, serif", fontSize: "1.2rem", color: "#3D2B1F", margin: 0 }}>Mi Lista ({totalItems})</h2>
@@ -604,7 +604,7 @@ export default function CompraPage() {
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setCompareOpen(false)}
                 style={{ position: "fixed", inset: 0, background: "rgba(61,43,31,0.4)", zIndex: 200 }} />
             <motion.div initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: 500, background: "white", zIndex: 201, display: "flex", flexDirection: "column", boxShadow: "-8px 0 40px rgba(61,43,31,0.15)" }}>
+              className="side-panel" style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: 500, background: "white", zIndex: 201, display: "flex", flexDirection: "column", boxShadow: "-8px 0 40px rgba(61,43,31,0.15)" }}>
               <div style={{ padding: "20px 24px", borderBottom: "1px solid #E8DFD0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <div>
                   <h2 style={{ fontFamily: "Georgia, serif", fontSize: "1.2rem", color: "#3D2B1F", margin: 0 }}>Resultado comparación</h2>
@@ -773,7 +773,7 @@ export default function CompraPage() {
               <motion.div
                 initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
                 transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: 500, background: "white", zIndex: 203, display: "flex", flexDirection: "column", boxShadow: "-8px 0 40px rgba(61,43,31,0.15)" }}
+                className="side-panel" style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: 500, background: "white", zIndex: 203, display: "flex", flexDirection: "column", boxShadow: "-8px 0 40px rgba(61,43,31,0.15)" }}
               >
                 {/* Header */}
                 <div style={{ padding: "20px 24px", borderBottom: "1px solid #E8DFD0", display: "flex", alignItems: "center", gap: 12 }}>
@@ -881,7 +881,21 @@ export default function CompraPage() {
         cartQuantity={getQuantity(selectedProductId || 0)}
       />
 
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @media (max-width: 768px) {
+          .compra-page { padding: 16px !important; }
+          .compra-header { flex-wrap: wrap !important; gap: 10px !important; }
+          .side-panel { width: 100vw !important; }
+          .compra-modal-lg { width: calc(100vw - 32px) !important; padding: 28px 20px !important; }
+          .compra-modal-md { width: calc(100vw - 32px) !important; padding: 28px 20px !important; }
+          .products-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)) !important; }
+        }
+        @media (max-width: 480px) {
+          .compra-page { padding: 12px !important; }
+          .products-grid { grid-template-columns: repeat(2, 1fr) !important; }
+        }
+      `}</style>
     </div>
   );
 }

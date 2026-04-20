@@ -222,7 +222,7 @@ export default function AjustesPage() {
   );
 
   return (
-    <div style={{ padding: "24px" }}>
+    <div className="ajustes-page" style={{ padding: "24px" }}>
 
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 28 }}>
@@ -233,9 +233,9 @@ export default function AjustesPage() {
       {/* ── Fila 1: Perfil — ancho completo ── */}
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} style={{ marginBottom: 20 }}>
         <Card>
-          <div style={{ display: "grid", gridTemplateColumns: "220px 1fr", gap: 0 }}>
+          <div className="perfil-grid" style={{ display: "grid", gridTemplateColumns: "220px 1fr", gap: 0 }}>
             {/* Lado izquierdo: identidad */}
-            <div style={{ padding: "28px 24px", borderRight: "1px solid #F5F0E8", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10 }}>
+            <div className="perfil-left" style={{ padding: "28px 24px", borderRight: "1px solid #F5F0E8", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10 }}>
               <div style={{ width: 64, height: 64, borderRadius: "50%", background: "linear-gradient(135deg, #6B7A3A, #8A9B4A)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 16px rgba(107,122,58,0.3)" }}>
                 <span style={{ fontSize: "1.35rem", fontWeight: 700, color: "white", fontFamily: "system-ui" }}>{initials}</span>
               </div>
@@ -271,7 +271,7 @@ export default function AjustesPage() {
               {editingProfile ? (
                 /* Modo edición */
                 <>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 }}>
+                  <div className="profile-form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 }}>
                     <StyledInput label="Nombre" icon={<User size={16} color="#6B7A3A" />} value={name} onChange={setName} placeholder="Tu nombre" />
                     <StyledInput label="Email" icon={<Mail size={16} color="#6B7A3A" />} value={email} onChange={setEmail} type="email" placeholder="tu@email.com" />
                   </div>
@@ -282,7 +282,7 @@ export default function AjustesPage() {
                 </>
               ) : (
                 /* Modo lectura */
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                <div className="profile-form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                   {[
                     { label: "Nombre", icon: <User size={14} color="#6B7A3A" />, value: name || "—" },
                     { label: "Email",  icon: <Mail size={14} color="#6B7A3A" />, value: email || "—" },
@@ -303,7 +303,7 @@ export default function AjustesPage() {
       </motion.div>
 
       {/* ── Fila 2: Presupuestos | Notificaciones — misma altura ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, alignItems: "stretch" }}>
+      <div className="ajustes-row2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, alignItems: "stretch" }}>
 
         {/* Presupuestos */}
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} style={{ height: "100%" }}>
@@ -405,7 +405,7 @@ export default function AjustesPage() {
               </div>
               <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#3D2B1F", fontFamily: "system-ui", textTransform: "uppercase", letterSpacing: "0.06em" }}>Supermercados</span>
             </div>
-            <div style={{ flex: 1, display: "flex", gap: 12 }}>
+            <div className="sm-cards" style={{ flex: 1, display: "flex", gap: 12 }}>
               {[
                 { name: "Mercadona", color: "#00A650", active: true },
                 { name: "Día",       color: "#E31837", active: true },
@@ -450,6 +450,18 @@ export default function AjustesPage() {
         input[type=number]::-webkit-outer-spin-button,
         input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         input[type=number] { -moz-appearance: textfield; }
+
+        @media (max-width: 768px) {
+          .ajustes-page { padding: 16px !important; }
+          .perfil-grid { grid-template-columns: 1fr !important; }
+          .perfil-left { border-right: none !important; border-bottom: 1px solid #F5F0E8 !important; padding: 24px 20px !important; }
+          .profile-form-grid { grid-template-columns: 1fr !important; }
+          .ajustes-row2 { grid-template-columns: 1fr !important; }
+          .sm-cards { flex-direction: column !important; }
+        }
+        @media (max-width: 480px) {
+          .ajustes-page { padding: 12px !important; }
+        }
       `}</style>
     </div>
   );

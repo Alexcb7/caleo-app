@@ -223,7 +223,7 @@ export default function HomePage() {
 
 
   return (
-    <div style={{ padding: "28px 32px" }}>
+    <div className="home-page" style={{ padding: "28px 32px" }}>
 
       {/* Header + filtro */}
       <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
@@ -254,7 +254,7 @@ export default function HomePage() {
 
             {/* Dropdown de notificaciones */}
             {notifOpen && (
-              <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, width: 360, background: "white", border: "1.5px solid #E8DFD0", borderRadius: 18, boxShadow: "0 12px 40px rgba(61,43,31,0.15)", zIndex: 100, overflow: "hidden" }}>
+              <div className="notif-dropdown" style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, width: 360, background: "white", border: "1.5px solid #E8DFD0", borderRadius: 18, boxShadow: "0 12px 40px rgba(61,43,31,0.15)", zIndex: 100, overflow: "hidden" }}>
 
                 {/* Cabecera */}
                 <div style={{ background: "linear-gradient(135deg, #6B7A3A 0%, #8A9A50 100%)", padding: "16px 18px 14px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -307,9 +307,9 @@ export default function HomePage() {
           </div>
 
           {/* Filtro de periodo */}
-          <div style={{ display: "flex", background: "white", border: "1.5px solid #E8DFD0", borderRadius: 12, padding: 4, gap: 2 }}>
+          <div className="period-filter" style={{ display: "flex", background: "white", border: "1.5px solid #E8DFD0", borderRadius: 12, padding: 4, gap: 2 }}>
             {(["dia", "semana", "mes", "año"] as Period[]).map(p => (
-              <button key={p} onClick={() => setPeriod(p)}
+              <button key={p} onClick={() => setPeriod(p)} className="period-btn"
                 style={{ padding: "8px 18px", borderRadius: 9, border: "none", background: period === p ? "#6B7A3A" : "transparent", color: period === p ? "white" : "#8C7B6B", fontSize: "0.82rem", fontFamily: "system-ui", fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}>
                 {p === "dia" ? "Día" : p === "semana" ? "Semana" : p === "mes" ? "Mes" : "Año"}
               </button>
@@ -319,7 +319,7 @@ export default function HomePage() {
       </motion.div>
 
       {/* Stats */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 20 }}>
+      <div className="home-stats" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 20 }}>
         {[
           { label: "Gasto del periodo", value: `${(history?.period_spent || 0).toFixed(2)}€`, sub: `esta ${period === "dia" ? "jornada" : period === "semana" ? "semana" : period === "mes" ? "mes" : "año"}`, color: "#6B7A3A" },
           { label: "Ahorro estimado", value: `${(history?.ahorro_estimado || 0).toFixed(2)}€`, sub: `vs. precio sin oferta`, color: "#B8A06A" },
@@ -356,7 +356,7 @@ export default function HomePage() {
                 <Settings size={12} /> Ajustar
               </Link>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: cols, gap: 14 }}>
+            <div className="home-budget" style={{ display: "grid", gridTemplateColumns: cols, gap: 14 }}>
               {budgetItems.map((b, i) => {
                 const pct = Math.min((b.spent / b.limit) * 100, 100);
                 const over = b.spent > b.limit;
@@ -399,7 +399,7 @@ export default function HomePage() {
       })()}
 
       {/* Charts fila 1 */}
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 16, marginBottom: 20 }}>
+      <div className="home-charts" style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 16, marginBottom: 20 }}>
 
         {/* BarChart gasto */}
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
@@ -510,7 +510,7 @@ export default function HomePage() {
       {/* Accesos rápidos — fila completa */}
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }} style={{ marginBottom: 20 }}>
         <h2 style={{ fontSize: "0.75rem", fontWeight: 700, color: "#8C7B6B", fontFamily: "system-ui", margin: "0 0 12px", textTransform: "uppercase", letterSpacing: "0.08em" }}>Accesos rápidos</h2>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+        <div className="home-accesos" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
           {ACCESOS.map((a, i) => (
             <motion.div key={i} whileHover={{ y: -3, boxShadow: "0 8px 24px rgba(61,43,31,0.10)" }} whileTap={{ scale: 0.97 }}
               transition={{ type: "spring", stiffness: 300, damping: 20 }}
@@ -552,7 +552,7 @@ export default function HomePage() {
           </Link>
         </div>
         {ofertasLoading ? (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 12 }}>
+          <div className="home-ofertas" style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 12 }}>
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} style={{ background: "#F5F0E8", borderRadius: 14, aspectRatio: "1", animation: "pulse 1.4s ease-in-out infinite", animationDelay: `${i * 0.1}s` }} />
             ))}
@@ -562,7 +562,7 @@ export default function HomePage() {
             No hay ofertas disponibles
           </div>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 12 }}>
+          <div className="home-ofertas" style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 12 }}>
             {ofertas.map((oferta, i) => (
               <motion.div key={oferta.id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.5 + i * 0.05 }}
                 whileHover={{ scale: 1.03, y: -2 }}
@@ -589,7 +589,34 @@ export default function HomePage() {
         )}
       </motion.div>
 
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } } @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }`}</style>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        @media (max-width: 768px) {
+          .home-page { padding: 16px !important; }
+          .home-stats { grid-template-columns: repeat(2, 1fr) !important; }
+          .home-budget { grid-template-columns: repeat(2, 1fr) !important; }
+          .home-charts { grid-template-columns: 1fr !important; }
+          .home-accesos { grid-template-columns: repeat(2, 1fr) !important; }
+          .home-ofertas { grid-template-columns: repeat(3, 1fr) !important; }
+          .notif-dropdown {
+            position: fixed !important;
+            top: 62px !important;
+            left: 8px !important;
+            right: 8px !important;
+            width: auto !important;
+            max-height: 75vh !important;
+            overflow-y: auto !important;
+          }
+          .period-btn { padding: 7px 10px !important; font-size: 0.75rem !important; }
+        }
+        @media (max-width: 480px) {
+          .home-page { padding: 12px !important; }
+          .home-stats { grid-template-columns: repeat(2, 1fr) !important; }
+          .home-budget { grid-template-columns: repeat(2, 1fr) !important; }
+          .home-ofertas { grid-template-columns: repeat(2, 1fr) !important; }
+        }
+      `}</style>
     </div>
   );
 }

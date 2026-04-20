@@ -169,7 +169,7 @@ export default function MisListasPage() {
     <div style={{ padding: "24px" }}>
 
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+      <div className="page-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
         <div>
           <h1 style={{ fontSize: "1.6rem", fontWeight: 700, color: "#3D2B1F", fontFamily: "Georgia, serif", margin: 0 }}>Mis Listas</h1>
           <p style={{ fontSize: "0.85rem", color: "#8C7B6B", margin: "4px 0 0", fontFamily: "system-ui" }}>Organiza tus productos en listas personalizadas</p>
@@ -235,7 +235,7 @@ export default function MisListasPage() {
           </motion.button>
         </div>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 14 }}>
+        <div className="lists-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 14 }}>
           {filteredLists.length === 0 && searchQuery && (
             <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "40px 24px", color: "#8C7B6B", fontFamily: "system-ui", fontSize: "0.88rem" }}>
               Sin resultados para <strong style={{ color: "#3D2B1F" }}>"{searchQuery}"</strong>
@@ -313,7 +313,7 @@ export default function MisListasPage() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.92 }}
               transition={{ type: "spring", damping: 20, stiffness: 200 }}
-              style={{ position: "fixed", top: "5%", left: "50%", transform: "translate(-50%, -50%)", width: 440, background: "white", borderRadius: 24, padding: "36px", zIndex: 301, boxShadow: "0 24px 80px rgba(61,43,31,0.2)" }}
+              className="center-modal" style={{ position: "fixed", top: "5%", left: "50%", transform: "translate(-50%, -50%)", width: 440, background: "white", borderRadius: 24, padding: "36px", zIndex: 301, boxShadow: "0 24px 80px rgba(61,43,31,0.2)" }}
             >
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
                 <h2 style={{ fontFamily: "Georgia, serif", fontSize: "1.3rem", color: "#3D2B1F", margin: 0 }}>
@@ -396,7 +396,7 @@ export default function MisListasPage() {
             <motion.div
               initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: 440, background: "white", zIndex: 201, display: "flex", flexDirection: "column", boxShadow: "-8px 0 40px rgba(61,43,31,0.15)" }}
+              className="side-panel" style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: 440, background: "white", zIndex: 201, display: "flex", flexDirection: "column", boxShadow: "-8px 0 40px rgba(61,43,31,0.15)" }}
             >
               {detailLoading ? (
                 <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 16 }}>
@@ -513,7 +513,18 @@ export default function MisListasPage() {
         zIndexBase={300}
       />
 
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @media (max-width: 768px) {
+          .page-header { flex-wrap: wrap !important; gap: 12px !important; }
+          .lists-grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)) !important; }
+          .center-modal { width: calc(100vw - 32px) !important; padding: 24px 20px !important; }
+          .side-panel { width: 100vw !important; }
+        }
+        @media (max-width: 480px) {
+          .lists-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
     </div>
   );
 }

@@ -2,8 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from app.db.connection import engine
-from app.api import auth, products, comparador, purchases, stats, lists, ofertas, ajustes, notificaciones
-
+from app.api import auth, products, comparador, purchases, stats, lists, ofertas, ajustes, notificaciones, chat
 
 from app.models import *
 
@@ -25,6 +24,7 @@ app.include_router(lists.router)
 app.include_router(ofertas.router)
 app.include_router(ajustes.router)
 app.include_router(notificaciones.router)
+app.include_router(chat.router)
 
 @app.get("/")
 def root():
@@ -32,7 +32,6 @@ def root():
 
 @app.get("/db-check")
 def db_check():
-    
     try:
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
