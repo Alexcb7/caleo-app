@@ -65,8 +65,7 @@ def get_price_history(product_id: int, db: Session = Depends(get_db)):
           AND sp.in_stock = true
     """)
 
-    # 2. Historial — solo días donde el precio era distinto al actual
-    #    (producto sin variación de precio → no se muestra historial)
+    # 2. Historial completo — todos los días scrapeados (sin filtrar por precio actual)
     sql_history = text("""
         SELECT DISTINCT ON (s.id, ph.scraped_at::date)
             ph.price, ph.is_offer,
@@ -78,9 +77,8 @@ def get_price_history(product_id: int, db: Session = Depends(get_db)):
         WHERE sp.product_id = :product_id
           AND ph.scraped_at IS NOT NULL
           AND ph.scraped_at::date < CURRENT_DATE
-          AND ph.price <> sp.price
         ORDER BY s.id, ph.scraped_at::date ASC, ph.scraped_at DESC
-        LIMIT 300
+        LIMIT 200
     """)
 
     current_rows = db.execute(sql_current, {"product_id": product_id}).fetchall()
@@ -110,9 +108,21 @@ def get_price_history(product_id: int, db: Session = Depends(get_db)):
 
     result = []
     for sm, info in sm_data.items():
+        dates = info["dates"]
+        # Deduplicar precios consecutivos idénticos: conservar primer y último punto
+        # más cada cambio de precio, para que líneas planas tengan exactamente 2 puntos.
+        if len(dates) <= 2:
+            deduped = dates[:]
+        else:
+            deduped = [dates[0]]
+            for i in range(1, len(dates) - 1):
+                if info["seen"][dates[i]]["price"] != info["seen"][dates[i - 1]]["price"]:
+                    deduped.append(dates[i])
+            deduped.append(dates[-1])
+
         data = [
             {"date": d, "price": info["seen"][d]["price"], "is_offer": info["seen"][d]["is_offer"]}
-            for d in info["dates"]
+            for d in deduped
         ]
         result.append({"supermarket": sm, "slug": info["slug"], "data": data})
     return result

@@ -184,7 +184,7 @@ export default function CompraPage() {
       const stored = localStorage.getItem("user");
       const user = stored ? JSON.parse(stored) : null;
       if (!user) return;
-      const items = compareResult.items
+      const resolvedItems = compareResult.items
         .filter(i => !i.not_found)
         .map(i => {
           const priceItem = purchaseStrategy === "mercadona"
@@ -192,14 +192,16 @@ export default function CompraPage() {
             : purchaseStrategy === "dia"
               ? (i.prices.find(p => p.supermarket_slug === "dia") ?? i.cheapest)
               : i.cheapest;
-          return {
-            product_id: i.product_id,
-            supermarket_id: priceItem.supermarket_id,
-            price: priceItem.price,
-            quantity: i.quantity,
-            is_offer: priceItem.is_offer,
-          };
+          return { priceItem, product_id: i.product_id, quantity: i.quantity };
         });
+      const items = resolvedItems.map(({ priceItem, product_id, quantity }) => ({
+        product_id,
+        supermarket_id: priceItem.supermarket_id,
+        price: priceItem.price,
+        quantity,
+        is_offer: priceItem.is_offer,
+      }));
+      const supermarketsSelected = [...new Set(resolvedItems.map(({ priceItem }) => priceItem.supermarket_slug))];
       const strategyTotal = items.reduce((acc, i) => acc + i.price * i.quantity, 0);
 
       if (fromList) {
@@ -226,6 +228,7 @@ export default function CompraPage() {
           title: `Compra ${new Date().toLocaleDateString("es-ES")}`,
           total_price: strategyTotal,
           budget_limit: budget ? parseFloat(budget) : null,
+          supermarkets_selected: supermarketsSelected,
           items,
         }),
       });

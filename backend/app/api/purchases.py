@@ -54,6 +54,7 @@ def get_user_purchases(user_id: int, db: Session = Depends(get_db)):
             "is_completed": p.is_completed,
             "created_at": p.created_at.isoformat(),
             "items_count": count,
+            "supermarkets": p.supermarkets_selected or [],
         })
     return result
 

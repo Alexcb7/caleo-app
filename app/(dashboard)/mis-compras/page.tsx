@@ -2,11 +2,21 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ShoppingCart, Check, Trash2, ChevronRight, X, Home, ListPlus, Leaf, Wheat, Droplets, PawPrint, Wine, Coffee, Beef, Snowflake, Pencil, LucideIcon } from "lucide-react";
+import { ShoppingCart, Check, Trash2, ChevronRight, X, Home, ListPlus, Leaf, Wheat, Droplets, PawPrint, Wine, Coffee, Beef, Snowflake, Pencil, Info, LucideIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Loading from "../loading";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+const SUPERMARKET_LOGOS: Record<string, { logo: string; url: string; name: string }> = {
+  "mercadona": { logo: "/images/mercadona-logo.png", url: "https://www.mercadona.es", name: "Mercadona" },
+  "dia":       { logo: "/images/dia-logo.png",       url: "https://www.dia.es",       name: "Día" },
+};
+
+const SUPERMARKET_LOGO_BY_NAME: Record<string, { logo: string; url: string }> = {
+  "Mercadona": { logo: "/images/mercadona-logo.png", url: "https://www.mercadona.es" },
+  "Día":       { logo: "/images/dia-logo.png",       url: "https://www.dia.es" },
+};
 
 const LIST_EMOJIS = ["🛒", "🥦", "🍝", "🧴", "🐾", "🍷", "☕", "🥩", "🧊"];
 const LIST_ICON_MAP: Record<string, LucideIcon> = {
@@ -21,6 +31,7 @@ type Purchase = {
   is_completed: boolean;
   created_at: string;
   items_count: number;
+  supermarkets: string[];
 };
 
 type PurchaseDetail = {
@@ -58,6 +69,7 @@ export default function MisComprasPage() {
   const [listFormName, setListFormName] = useState("");
   const [listFormEmoji, setListFormEmoji] = useState("🛒");
   const [listSaving, setListSaving] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
   const [renamePurchase, setRenamePurchase] = useState<Purchase | null>(null);
   const [renameName, setRenameName] = useState("");
@@ -220,14 +232,23 @@ export default function MisComprasPage() {
           <h1 style={{ fontSize: "1.6rem", fontWeight: 700, color: "#3D2B1F", fontFamily: "Georgia, serif", margin: 0 }}>Mis Compras</h1>
           <p style={{ fontSize: "0.85rem", color: "#8C7B6B", margin: "4px 0 0", fontFamily: "system-ui" }}>Historial y seguimiento de tus compras</p>
         </div>
-        <motion.button
-          whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-          onClick={() => router.push("/compra")}
-          style={{ background: "#6B7A3A", border: "none", borderRadius: 12, padding: "10px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, color: "white", fontFamily: "system-ui", fontWeight: 600, fontSize: "0.9rem" }}
-        >
-          <ShoppingCart size={16} />
-          Nueva compra
-        </motion.button>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <motion.button
+            whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }}
+            onClick={() => setInfoOpen(true)}
+            style={{ width: 36, height: 36, background: "white", border: "1.5px solid #E8DFD0", borderRadius: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+          >
+            <Info size={16} color="#8C7B6B" />
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+            onClick={() => router.push("/compra")}
+            style={{ background: "#6B7A3A", border: "none", borderRadius: 12, padding: "10px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, color: "white", fontFamily: "system-ui", fontWeight: 600, fontSize: "0.9rem" }}
+          >
+            <ShoppingCart size={16} />
+            Nueva compra
+          </motion.button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -340,6 +361,22 @@ export default function MisComprasPage() {
                 </div>
               </div>
 
+              {/* Logos supermercado */}
+              {purchase.supermarkets?.length > 0 && (
+                <div style={{ display: "flex", gap: 5, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+                  {purchase.supermarkets.map(slug => {
+                    const info = SUPERMARKET_LOGOS[slug];
+                    if (!info) return null;
+                    return (
+                      <a key={slug} href={info.url} target="_blank" rel="noopener noreferrer" title={`Comprar en ${info.name}`}
+                        style={{ display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, cursor: "pointer", textDecoration: "none" }}>
+                        <img src={info.logo} alt={info.name} style={{ width: 48, height: 48, objectFit: "contain" }} />
+                      </a>
+                    );
+                  })}
+                </div>
+              )}
+
               {/* Precio */}
               <div style={{ textAlign: "right", flexShrink: 0 }}>
                 <p style={{ fontSize: "1.1rem", fontWeight: 700, color: "#3D2B1F", fontFamily: "Georgia, serif", margin: 0 }}>{purchase.total_price.toFixed(2)}€</p>
@@ -405,6 +442,26 @@ export default function MisComprasPage() {
                         <X size={20} />
                       </button>
                     </div>
+
+                    {/* Logos supermercado */}
+                    {(() => {
+                      const smNames = [...new Set(selectedPurchase.items.map(i => i.supermarket).filter(Boolean))];
+                      if (smNames.length === 0) return null;
+                      return (
+                        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                          {smNames.map(name => {
+                            const info = SUPERMARKET_LOGO_BY_NAME[name];
+                            if (!info) return null;
+                            return (
+                              <a key={name} href={info.url} target="_blank" rel="noopener noreferrer" title={`Comprar en ${name} online`}
+                                style={{ display: "flex", alignItems: "center", cursor: "pointer", textDecoration: "none" }}>
+                                <img src={info.logo} alt={name} style={{ width: 52, height: 52, objectFit: "contain" }} />
+                              </a>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
 
                     {/* Estado + precio */}
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -472,6 +529,71 @@ export default function MisComprasPage() {
                   </div>
                 </>
               )}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Modal info costes de envío */}
+      <AnimatePresence>
+        {infoOpen && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setInfoOpen(false)}
+              style={{ position: "fixed", inset: 0, background: "rgba(61,43,31,0.45)", zIndex: 300, backdropFilter: "blur(4px)" }} />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.93, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.93 }} transition={{ type: "spring", damping: 22, stiffness: 220 }}
+              className="center-modal" style={{ position: "fixed", top: "20%", left: "50%", transform: "translate(-50%, -50%)", width: 420, background: "white", borderRadius: 24, padding: "32px", zIndex: 301, boxShadow: "0 24px 80px rgba(61,43,31,0.18)" }}
+            >
+              {/* Header */}
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24 }}>
+                <div>
+                  <h2 style={{ fontFamily: "Georgia, serif", fontSize: "1.2rem", color: "#3D2B1F", margin: "0 0 4px" }}>Compra online</h2>
+                  <p style={{ fontSize: "0.78rem", color: "#8C7B6B", fontFamily: "system-ui", margin: 0 }}>Condiciones de envío a domicilio</p>
+                </div>
+                <button onClick={() => setInfoOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "#8C7B6B", flexShrink: 0 }}>
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Mercadona */}
+              <div style={{ marginBottom: 14, background: "#F5F0E8", borderRadius: 16, padding: "18px 20px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+                  <img src="/images/mercadona-logo.png" alt="Mercadona" style={{ width: 44, height: 44, objectFit: "contain", flexShrink: 0 }} />
+                  <span style={{ fontFamily: "system-ui", fontWeight: 700, fontSize: "0.95rem", color: "#3D2B1F" }}>Mercadona</span>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <span style={{ fontSize: "0.82rem", color: "#8C7B6B", fontFamily: "system-ui" }}>Coste del servicio</span>
+                    <span style={{ fontSize: "0.88rem", fontWeight: 700, color: "#3D2B1F", fontFamily: "Georgia, serif" }}>8,20€</span>
+                  </div>
+                  <div style={{ height: 1, background: "#E8DFD0" }} />
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <span style={{ fontSize: "0.82rem", color: "#8C7B6B", fontFamily: "system-ui" }}>Pedido mínimo</span>
+                    <span style={{ fontSize: "0.88rem", fontWeight: 700, color: "#3D2B1F", fontFamily: "Georgia, serif" }}>60,00€</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Día */}
+              <div style={{ background: "#F5F0E8", borderRadius: 16, padding: "18px 20px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+                  <img src="/images/dia-logo.png" alt="Día" style={{ width: 44, height: 44, objectFit: "contain", flexShrink: 0 }} />
+                  <span style={{ fontFamily: "system-ui", fontWeight: 700, fontSize: "0.95rem", color: "#3D2B1F" }}>Día</span>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <span style={{ fontSize: "0.82rem", color: "#8C7B6B", fontFamily: "system-ui" }}>Envío gratis desde</span>
+                    <span style={{ fontSize: "0.88rem", fontWeight: 700, color: "#3D2B1F", fontFamily: "Georgia, serif" }}>100,00€</span>
+                  </div>
+                  <div style={{ height: 1, background: "#E8DFD0" }} />
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <span style={{ fontSize: "0.82rem", color: "#8C7B6B", fontFamily: "system-ui" }}>Coste si no se alcanza</span>
+                    <span style={{ fontSize: "0.88rem", fontWeight: 700, color: "#3D2B1F", fontFamily: "Georgia, serif" }}>4,99€</span>
+                  </div>
+                </div>
+              </div>
             </motion.div>
           </>
         )}

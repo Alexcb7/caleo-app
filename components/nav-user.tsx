@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { SidebarMenu, SidebarMenuItem } from "@/components/ui/sidebar"
 import { Settings, LogOut, ChevronUp } from "lucide-react"
+import { clearAuthCookie } from "@/components/auth-guard"
 
 export function NavUser({
   user,
@@ -38,6 +39,7 @@ export function NavUser({
   const handleLogout = () => {
     localStorage.removeItem("token")
     localStorage.removeItem("user")
+    clearAuthCookie()
     router.push("/login")
   }
 

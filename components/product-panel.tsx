@@ -38,7 +38,6 @@ type Props = {
   zIndexBase?: number;
 };
 
-const SM_COLORS = ["#6B7A3A", "#C17F3A", "#B8A06A", "#3D2B1F"];
 
 export function ProductPanel({ productId, onClose, onAddToCart, cartQuantity, zIndexBase = 200 }: Props) {
   const [product, setProduct] = useState<ProductDetail | null>(null);
@@ -187,8 +186,7 @@ export function ProductPanel({ productId, onClose, onAddToCart, cartQuantity, zI
                     </div>
                   </div>
 
-                  {/* Historial de precios — solo si hay variación real de precio */}
-                  {(product.prices.some(p => p.is_offer) || history.some(sm => sm.data.length > 1)) && (
+                  {/* Historial de precios — siempre visible */}
                   <div style={{ padding: "20px 24px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 14 }}>
                       <TrendingUp size={14} color="#B8A06A" />
@@ -207,16 +205,25 @@ export function ProductPanel({ productId, onClose, onAddToCart, cartQuantity, zI
                           if (entry) {
                             point[sm.supermarket] = entry.price;
                           } else if (sm.data[0]) {
-                            // Sin entrada para esta fecha: extender con el precio más cercano
                             point[sm.supermarket] = sm.data[0].price;
                           }
                         });
                         return point;
                       };
                       const chartData = allDates.map(buildPoint);
-                      // Si solo hay un punto no se puede trazar línea — añadir punto anterior igual
+                      // Un solo punto: añadir "Anterior" sintético.
+                      // Si el super tiene oferta activa, usar original_price para mostrar descenso.
+                      // Si no, línea plana al precio actual.
                       if (chartData.length === 1) {
-                        chartData.unshift({ ...chartData[0], date: "Anterior" });
+                        const synthetic: Record<string, any> = { date: "Anterior" };
+                        history.forEach(sm => {
+                          const priceInfo = product.prices.find(p => p.supermarket === sm.supermarket);
+                          synthetic[sm.supermarket] =
+                            priceInfo?.is_offer && priceInfo.original_price
+                              ? priceInfo.original_price
+                              : (sm.data[0]?.price ?? 0);
+                        });
+                        chartData.unshift(synthetic);
                       }
                       const toggleSuper = (name: string) =>
                         setHiddenSupers(prev => {
@@ -228,9 +235,9 @@ export function ProductPanel({ productId, onClose, onAddToCart, cartQuantity, zI
                         <div>
                           {/* Toggles */}
                           <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
-                            {history.map((sm, i) => {
+                            {history.map(sm => {
                               const hidden = hiddenSupers.has(sm.supermarket);
-                              const color = SM_COLORS[i % SM_COLORS.length];
+                              const color = supermarketColor(sm.slug);
                               return (
                                 <button key={sm.supermarket} onClick={() => toggleSuper(sm.supermarket)}
                                   style={{ display: "flex", alignItems: "center", gap: 5, padding: "4px 10px", borderRadius: 20, border: `1.5px solid ${hidden ? "#E8DFD0" : color}`, background: hidden ? "white" : `${color}18`, cursor: "pointer", fontFamily: "system-ui", fontSize: "0.72rem", fontWeight: 600, color: hidden ? "#8C7B6B" : color, transition: "all 0.15s" }}>
@@ -246,10 +253,10 @@ export function ProductPanel({ productId, onClose, onAddToCart, cartQuantity, zI
                               <XAxis dataKey="date" tick={{ fontSize: 10, fontFamily: "system-ui", fill: "#8C7B6B" }} axisLine={false} tickLine={false} />
                               <YAxis tick={{ fontSize: 10, fontFamily: "system-ui", fill: "#8C7B6B" }} axisLine={false} tickLine={false} tickFormatter={v => `${v}€`} width={40} />
                               <Tooltip formatter={(v: any, name: any) => [`${(v as number).toFixed(2)}€`, name]} contentStyle={{ borderRadius: 10, border: "1.5px solid #E8DFD0", fontFamily: "system-ui", fontSize: 12 }} isAnimationActive={false} />
-                              {history.map((sm, i) =>
+                              {history.map(sm =>
                                 hiddenSupers.has(sm.supermarket) ? null : (
                                   <Line key={sm.supermarket} type="monotone" dataKey={sm.supermarket}
-                                    stroke={SM_COLORS[i % SM_COLORS.length]}
+                                    stroke={supermarketColor(sm.slug)}
                                     strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} connectNulls />
                                 )
                               )}
@@ -259,7 +266,6 @@ export function ProductPanel({ productId, onClose, onAddToCart, cartQuantity, zI
                       );
                     })()}
                   </div>
-                  )}
                 </div>
 
                 {/* Footer añadir */}

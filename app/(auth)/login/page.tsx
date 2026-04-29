@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { useState, useRef, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Eye, EyeOff } from "lucide-react";
+import { setAuthCookie } from "@/components/auth-guard";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -12,12 +14,24 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [slowServer, setSlowServer] = useState(false);
+  const slowTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const router = useRouter();
+
+  // Redirigir si ya hay sesión activa
+  useEffect(() => {
+    if (localStorage.getItem("token") && localStorage.getItem("user")) {
+      router.replace("/home");
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
+    setSlowServer(false);
+    slowTimer.current = setTimeout(() => setSlowServer(true), 3000);
     try {
       const res = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
@@ -28,10 +42,13 @@ export default function LoginPage() {
       if (!res.ok) { setError(data.detail || "Error al iniciar sesión"); return; }
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
+      setAuthCookie();
       router.push("/home");
     } catch {
       setError("Error de conexión con el servidor");
     } finally {
+      if (slowTimer.current) clearTimeout(slowTimer.current);
+      setSlowServer(false);
       setLoading(false);
     }
   };
@@ -109,21 +126,37 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column" }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 8 }}>
-              {[
-                { label: "Email", type: "email", placeholder: "tu@email.com", value: email, onChange: setEmail, delay: 0.4 },
-                { label: "Contraseña", type: "password", placeholder: "••••••••", value: password, onChange: setPassword, delay: 0.5 },
-              ].map(({ label, type, placeholder, value, onChange, delay }) => (
-                <motion.div key={label} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay, duration: 0.4 }}
-                  style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <label style={{ fontSize: "0.82rem", fontWeight: 600, color: "#3D2B1F", fontFamily: "system-ui" }}>{label}</label>
+
+              {/* Email */}
+              <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4, duration: 0.4 }}
+                style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <label style={{ fontSize: "0.82rem", fontWeight: 600, color: "#3D2B1F", fontFamily: "system-ui" }}>Email</label>
+                <input
+                  type="email" placeholder="tu@email.com" value={email} onChange={e => setEmail(e.target.value)} required
+                  style={{ padding: "12px 16px", border: "1.5px solid #E8DFD0", borderRadius: 12, fontSize: "0.95rem", color: "#3D2B1F", background: "#F5F0E8", outline: "none", fontFamily: "system-ui" }}
+                  onFocus={e => { e.target.style.borderColor = "#6B7A3A"; e.target.style.boxShadow = "0 0 0 3px rgba(107,122,58,0.1)"; e.target.style.background = "white"; }}
+                  onBlur={e => { e.target.style.borderColor = "#E8DFD0"; e.target.style.boxShadow = "none"; e.target.style.background = "#F5F0E8"; }}
+                />
+              </motion.div>
+
+              {/* Contraseña */}
+              <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.5, duration: 0.4 }}
+                style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <label style={{ fontSize: "0.82rem", fontWeight: 600, color: "#3D2B1F", fontFamily: "system-ui" }}>Contraseña</label>
+                <div style={{ position: "relative" }}>
                   <input
-                    type={type} placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)} required
-                    style={{ padding: "12px 16px", border: "1.5px solid #E8DFD0", borderRadius: 12, fontSize: "0.95rem", color: "#3D2B1F", background: "#F5F0E8", outline: "none", fontFamily: "system-ui" }}
-                    onFocus={(e) => { e.target.style.borderColor = "#6B7A3A"; e.target.style.boxShadow = "0 0 0 3px rgba(107,122,58,0.1)"; e.target.style.background = "white"; }}
-                    onBlur={(e) => { e.target.style.borderColor = "#E8DFD0"; e.target.style.boxShadow = "none"; e.target.style.background = "#F5F0E8"; }}
+                    type={showPassword ? "text" : "password"} placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required
+                    style={{ width: "100%", padding: "12px 44px 12px 16px", border: "1.5px solid #E8DFD0", borderRadius: 12, fontSize: "0.95rem", color: "#3D2B1F", background: "#F5F0E8", outline: "none", fontFamily: "system-ui", boxSizing: "border-box" }}
+                    onFocus={e => { e.target.style.borderColor = "#6B7A3A"; e.target.style.boxShadow = "0 0 0 3px rgba(107,122,58,0.1)"; e.target.style.background = "white"; }}
+                    onBlur={e => { e.target.style.borderColor = "#E8DFD0"; e.target.style.boxShadow = "none"; e.target.style.background = "#F5F0E8"; }}
                   />
-                </motion.div>
-              ))}
+                  <button type="button" onClick={() => setShowPassword(v => !v)}
+                    style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", alignItems: "center", color: "#8C7B6B" }}>
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </motion.div>
+
             </div>
 
             {error && (
@@ -141,6 +174,22 @@ export default function LoginPage() {
             >
               {loading ? (<><span style={{ width: 16, height: 16, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "white", borderRadius: "50%", animation: "spin 0.7s linear infinite", display: "inline-block" }} />Cargando...</>) : "Entrar a Caleo"}
             </motion.button>
+
+            <AnimatePresence>
+              {slowServer && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                  transition={{ duration: 0.4 }}
+                  style={{ marginTop: 14, padding: "12px 16px", background: "#F5F0E8", border: "1.5px solid #E8DFD0", borderRadius: 12, display: "flex", alignItems: "flex-start", gap: 10 }}
+                >
+                  <span style={{ fontSize: "1rem", flexShrink: 0, marginTop: 1 }}>⏳</span>
+                  <div>
+                    <p style={{ fontSize: "0.82rem", fontWeight: 700, color: "#3D2B1F", fontFamily: "system-ui", margin: "0 0 2px" }}>El servidor está arrancando</p>
+                    <p style={{ fontSize: "0.78rem", color: "#8C7B6B", fontFamily: "system-ui", margin: 0, lineHeight: 1.5 }}>Esto puede tardar hasta 30 segundos la primera vez. Por favor, espera.</p>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }}
               style={{ textAlign: "center", fontSize: "0.85rem", color: "#8C7B6B", marginTop: 20, fontFamily: "system-ui" }}>

@@ -1,8 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
 from passlib.context import CryptContext
-from jose import jwt
+from jose import jwt, JWTError
 from datetime import datetime, timedelta
 from app.db.connection import get_db
 from app.models.all_models import User
@@ -45,6 +45,23 @@ def register(data: RegisterSchema, db: Session = Depends(get_db)):
     db.refresh(user)
     token = create_token(user.id, user.email)
     return {"token": token, "user": {"id": user.id, "name": user.name, "email": user.email}}
+
+@router.get("/verify")
+def verify_token(authorization: str = Header(default=None), db: Session = Depends(get_db)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Token requerido")
+    token = authorization[7:]
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Token inválido o expirado")
+    user_id_str = payload.get("sub")
+    if not user_id_str:
+        raise HTTPException(status_code=401, detail="Token malformado")
+    user = db.query(User).filter(User.id == int(user_id_str)).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="Usuario no encontrado")
+    return {"valid": True, "user": {"id": user.id, "name": user.name, "email": user.email}}
 
 @router.post("/login")
 def login(data: LoginSchema, db: Session = Depends(get_db)):
