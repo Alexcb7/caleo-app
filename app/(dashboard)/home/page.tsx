@@ -13,7 +13,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 type User = { id: number; name: string; email: string };
 type Stats = { total_spent: number; total_purchases: number; monthly_spent: number; weekly_spent: number; budgets: Record<string, number> };
-type History = { chart_data: { label: string; gasto: number; count: number; ticket_medio: number }[]; supermarket_totals: Record<string, number>; period_spent: number; ahorro_estimado: number };
+type History = { chart_data: { label: string; gasto: number; count: number; ticket_medio: number }[]; supermarket_totals: Record<string, number>; period_spent: number; ahorro_estimado: number; _fetchedAt?: number };
 type Oferta = { id: number; product_name: string; image_url: string; supermarket: string; price: number; original_price: number; category: string };
 type Period = "dia" | "semana" | "mes" | "año";
 type Notificacion = { id: string; type: string; title: string; message: string; icon: string; color: string; created_at: string };
@@ -153,8 +153,8 @@ export default function HomePage() {
 
   const fetchHistory = async (userId: number, p: Period) => {
     const cached = historyCache.current[p];
-    // Invalida el cache si no tiene ticket_medio (respuesta vieja sin ese campo)
-    if (cached && cached.chart_data[0]?.ticket_medio !== undefined) {
+    // Invalida el cache si no tiene ticket_medio o si los datos son de una sesión anterior
+    if (cached && cached.chart_data[0]?.ticket_medio !== undefined && cached._fetchedAt && Date.now() - cached._fetchedAt < 5 * 60 * 1000) {
       setHistory(cached);
       return;
     }
@@ -162,7 +162,7 @@ export default function HomePage() {
     try {
       const res = await fetch(`${API_URL}/stats/user/${userId}/history?period=${p}`);
       const raw = await res.json();
-      const data = { ...raw, chart_data: normalizeChartData(raw.chart_data || [], p) };
+      const data = { ...raw, chart_data: normalizeChartData(raw.chart_data || [], p), _fetchedAt: Date.now() };
       historyCache.current[p] = data;
       setHistory(data);
     } catch {}

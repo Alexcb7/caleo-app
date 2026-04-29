@@ -7,26 +7,26 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__fil
 from dotenv import load_dotenv
 load_dotenv(os.path.join(BASE_DIR, '.env'))
 
-print(f"🔌 Conectando a: {os.getenv('DATABASE_URL', 'NO ENCONTRADO')[:60]}...")
+print(f" Conectando a: {os.getenv('DATABASE_URL', 'NO ENCONTRADO')[:60]}...")
 
 from app.db.connection import SessionLocal
 from app.models.all_models import Supermarket, SupermarketProduct
 
 def load_dia():
-    print("🚀 Iniciando carga de DIA...")
+    print(" Iniciando carga de DIA...")
     db = SessionLocal()
 
     try:
         dia = db.query(Supermarket).filter(Supermarket.slug == "dia").first()
         if not dia:
-            print("❌ No se encontró DIA en la BD")
+            print(" No se encontró DIA en la BD")
             return
-        print(f"✅ Supermercado: {dia.name}")
+        print(f" Supermercado: {dia.name}")
 
         excel_path = os.path.join(BASE_DIR, "products_dia.xlsx")
-        print(f"📂 Leyendo: {excel_path}")
+        print(f" Leyendo: {excel_path}")
         df = pd.read_excel(excel_path)
-        print(f"📦 Total productos en Excel: {len(df)}")
+        print(f" Total productos en Excel: {len(df)}")
 
         insertados = 0
         omitidos = 0
@@ -64,16 +64,16 @@ def load_dia():
 
             if insertados % 300 == 0:
                 db.commit()
-                print(f"  💾 {insertados} insertados...")
+                print(f" {insertados} insertados...")
 
         db.commit()
-        print(f"✅ Productos insertados: {insertados}")
-        print(f"⚠️  Productos omitidos: {omitidos}")
-        print("🎉 Carga DIA completada")
+        print(f" Productos insertados: {insertados}")
+        print(f"  Productos omitidos: {omitidos}")
+        print(" Carga DIA completada")
 
     except Exception as e:
         db.rollback()
-        print(f"❌ Error: {e}")
+        print(f" Error: {e}")
         raise
     finally:
         db.close()

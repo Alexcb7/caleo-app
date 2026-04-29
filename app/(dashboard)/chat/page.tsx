@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Bot, User, Sparkles, ShoppingCart, List, RefreshCw } from "lucide-react";
+import Image from "next/image";
+import { Send, User, RefreshCw } from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -12,14 +13,6 @@ type Message = {
   content: string;
   timestamp: Date;
 };
-
-const SUGGESTIONS = [
-  "¿Qué productos están en oferta esta semana?",
-  "Hazme una paella para 8 personas y dime qué necesito",
-  "Lista equilibrada para 2 personas con 60€ para una semana",
-  "¿Cómo uso el modo Super Ahorro?",
-  "¿Dónde es más barato el aceite de oliva?",
-];
 
 export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([
@@ -32,6 +25,7 @@ export default function ChatPage() {
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [pacoZoom, setPacoZoom] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -100,12 +94,7 @@ export default function ChatPage() {
     }
   };
 
-  const handleSuggestion = (suggestion: string) => {
-    setInput(suggestion);
-    inputRef.current?.focus();
-  };
-
-  const clearChat = () => {
+const clearChat = () => {
     setMessages([{
       id: "welcome",
       role: "assistant",
@@ -123,18 +112,18 @@ export default function ChatPage() {
       {/* Header */}
       <div style={{ padding: "20px 24px", borderBottom: "1px solid #E8DFD0", background: "#F5F0E8", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 40, height: 40, background: "linear-gradient(135deg, #6B7A3A, #8A9B4A)", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Bot size={20} color="white" />
+          <div onClick={() => setPacoZoom(true)} style={{ width: 56, height: 56, borderRadius: 14, overflow: "hidden", flexShrink: 0, cursor: "pointer" }}>
+            <Image src="/images/paco.png" alt="Paco" width={56} height={56} style={{ objectFit: "cover", width: "100%", height: "100%" }} />
           </div>
           <div>
-            <h1 style={{ fontSize: "1rem", fontWeight: 700, color: "#3D2B1F", fontFamily: "Georgia, serif", margin: 0 }}>Chat IA</h1>
+            <h1 style={{ fontSize: "1rem", fontWeight: 700, color: "#3D2B1F", fontFamily: "Georgia, serif", margin: 0 }}>Asistente Paco</h1>
             <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
               <motion.div
                 animate={{ opacity: [1, 0.3, 1] }}
                 transition={{ duration: 1.5, repeat: Infinity }}
                 style={{ width: 6, height: 6, borderRadius: "50%", background: "#6B7A3A" }}
               />
-              <span style={{ fontSize: "0.72rem", color: "#8C7B6B", fontFamily: "system-ui" }}>Llama 3.3 · Groq · Paco</span>
+              <span style={{ fontSize: "0.72rem", color: "#8C7B6B", fontFamily: "system-ui" }}>Paco está en línea</span>
             </div>
           </div>
         </div>
@@ -147,27 +136,14 @@ export default function ChatPage() {
 
       {/* Mensajes */}
       <div style={{ flex: 1, overflowY: "auto", padding: "24px", display: "flex", flexDirection: "column", gap: 16 }}>
-        {messages.length === 1 && (
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-            style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center", marginBottom: 8 }}>
-            {[
-              { icon: <ShoppingCart size={13} />, label: "Comparar precios" },
-              { icon: <List size={13} />, label: "Crear listas" },
-              { icon: <Sparkles size={13} />, label: "Recomendaciones" },
-            ].map((chip, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", background: "white", border: "1.5px solid #E8DFD0", borderRadius: 20, fontSize: "0.78rem", color: "#8C7B6B", fontFamily: "system-ui" }}>
-                {chip.icon}
-                {chip.label}
-              </div>
-            ))}
-          </motion.div>
-        )}
 
         {messages.map((msg) => (
           <motion.div key={msg.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}
             style={{ display: "flex", gap: 10, alignItems: "flex-end", flexDirection: msg.role === "user" ? "row-reverse" : "row" }}>
-            <div style={{ width: 32, height: 32, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: msg.role === "assistant" ? "linear-gradient(135deg, #6B7A3A, #8A9B4A)" : "#3D2B1F" }}>
-              {msg.role === "assistant" ? <Bot size={15} color="white" /> : <User size={15} color="white" />}
+            <div style={{ width: 32, height: 32, borderRadius: "50%", flexShrink: 0, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", background: msg.role === "user" ? "#3D2B1F" : "transparent" }}>
+              {msg.role === "assistant"
+                ? <Image src="/images/paco.png" alt="Paco" width={32} height={32} style={{ objectFit: "cover", width: "100%", height: "100%" }} />
+                : <User size={15} color="white" />}
             </div>
             <div style={{ maxWidth: "70%" }}>
               <div style={{ padding: "12px 16px", borderRadius: msg.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px", background: msg.role === "user" ? "#3D2B1F" : "white", border: msg.role === "assistant" ? "1.5px solid #E8DFD0" : "none", boxShadow: "0 2px 8px rgba(61,43,31,0.06)" }}>
@@ -186,8 +162,8 @@ export default function ChatPage() {
           {loading && (
             <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}
               style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
-              <div style={{ width: 32, height: 32, borderRadius: "50%", background: "linear-gradient(135deg, #6B7A3A, #8A9B4A)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <Bot size={15} color="white" />
+              <div style={{ width: 32, height: 32, borderRadius: "50%", overflow: "hidden", flexShrink: 0 }}>
+                <Image src="/images/paco.png" alt="Paco" width={32} height={32} style={{ objectFit: "cover", width: "100%", height: "100%" }} />
               </div>
               <div style={{ padding: "14px 18px", background: "white", border: "1.5px solid #E8DFD0", borderRadius: "18px 18px 18px 4px", boxShadow: "0 2px 8px rgba(61,43,31,0.06)", display: "flex", gap: 5, alignItems: "center" }}>
                 {[0, 1, 2].map(i => (
@@ -202,19 +178,6 @@ export default function ChatPage() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Sugerencias */}
-      {messages.length <= 2 && !loading && (
-        <div style={{ padding: "0 24px 16px", display: "flex", gap: 8, overflowX: "auto", flexShrink: 0 }}>
-          {SUGGESTIONS.map((s, i) => (
-            <motion.button key={i} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.08 }}
-              whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-              onClick={() => handleSuggestion(s)}
-              style={{ padding: "8px 14px", background: "white", border: "1.5px solid #E8DFD0", borderRadius: 20, fontSize: "0.78rem", color: "#3D2B1F", fontFamily: "system-ui", cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
-              {s}
-            </motion.button>
-          ))}
-        </div>
-      )}
 
       {/* Input */}
       <div style={{ padding: "12px 24px 20px", background: "#F5F0E8", borderTop: "1px solid #E8DFD0", flexShrink: 0 }}>
@@ -239,6 +202,28 @@ export default function ChatPage() {
           Enter para enviar · Shift+Enter para nueva línea
         </p>
       </div>
+      {/* Modal zoom Paco */}
+      <AnimatePresence>
+        {pacoZoom && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setPacoZoom(false)}
+            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, cursor: "zoom-out" }}
+          >
+            <motion.div
+              initial={{ scale: 0.7, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.7, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 300, damping: 25 }}
+              style={{ borderRadius: 20, overflow: "hidden", boxShadow: "0 24px 80px rgba(0,0,0,0.4)" }}
+            >
+              <Image src="/images/paco.png" alt="Paco" width={320} height={320} style={{ objectFit: "cover", display: "block" }} />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

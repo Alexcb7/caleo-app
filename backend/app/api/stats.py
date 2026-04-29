@@ -57,20 +57,7 @@ def get_user_history(user_id: int, period: str = "semana", db: Session = Depends
         Purchase.is_completed == True
     ).all()
 
-    # Convertir created_at (UTC) a hora española para cada compra
     purchases_spain = [(p, _to_spain(p.created_at)) for p in purchases]
-
-    # Gasto por supermercado — 2 queries en lugar de N*M
-    sm_totals: dict = {}
-    if purchases:
-        purchase_ids = [p.id for p in purchases]
-        all_items = db.query(PurchaseItem).filter(PurchaseItem.purchase_id.in_(purchase_ids)).all()
-        sm_ids = {item.supermarket_id for item in all_items}
-        sm_map = {sm.id: sm.name for sm in db.query(Supermarket).filter(Supermarket.id.in_(sm_ids)).all()}
-        for item in all_items:
-            sm_name = sm_map.get(item.supermarket_id)
-            if sm_name:
-                sm_totals[sm_name] = sm_totals.get(sm_name, 0) + float(item.price or 0) * float(item.quantity or 1)
 
     def make_entry(label: str, bucket: list) -> dict:
         gasto = round(sum(float(p.total_price or 0) for p in bucket), 2)
@@ -78,30 +65,33 @@ def get_user_history(user_id: int, period: str = "semana", db: Session = Depends
         ticket_medio = round(gasto / count, 2) if count > 0 else 0.0
         return {"label": label, "gasto": gasto, "count": count, "ticket_medio": ticket_medio}
 
+    period_purchases: list = []
+
     if period == "dia":
-        # Últimas 24h por hora (en hora española)
-        start = now - timedelta(hours=23)
+        # Hoy por horas (00h-hora actual)
+        start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
         data = []
         for h in range(24):
-            hora = start + timedelta(hours=h)
+            hora_dt = start_of_day + timedelta(hours=h)
             bucket = [
                 p for p, p_spain in purchases_spain
-                if p_spain.replace(minute=0, second=0, microsecond=0) == hora.replace(minute=0, second=0, microsecond=0)
+                if p_spain.replace(minute=0, second=0, microsecond=0) == hora_dt
             ]
-            data.append(make_entry(f"{hora.hour:02d}h", bucket))
+            period_purchases.extend(bucket)
+            data.append(make_entry(f"{h:02d}h", bucket))
 
     elif period == "semana":
-        # Últimos 7 días (en hora española)
+        # Semana de calendario actual: Lun 00:00 — Dom 23:59
         dias = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
-        start = now - timedelta(days=6)
+        start_of_week = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
         data = []
         for d in range(7):
-            day = start + timedelta(days=d)
+            day = start_of_week + timedelta(days=d)
             bucket = [p for p, p_spain in purchases_spain if p_spain.date() == day.date()]
-            data.append(make_entry(dias[day.weekday()], bucket))
+            period_purchases.extend(bucket)
+            data.append(make_entry(dias[d], bucket))
 
     elif period == "mes":
-        # Semanas reales del mes actual (día 1 al último día del mes)
         import calendar
         first_day = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         last_day_num = calendar.monthrange(now.year, now.month)[1]
@@ -112,12 +102,12 @@ def get_user_history(user_id: int, period: str = "semana", db: Session = Depends
         while week_start.date() <= last_day.date():
             week_end = min(week_start + timedelta(days=6), last_day)
             bucket = [p for p, p_spain in purchases_spain if week_start.date() <= p_spain.date() <= week_end.date()]
+            period_purchases.extend(bucket)
             data.append(make_entry(f"Sem {sem}", bucket))
             week_start = week_end + timedelta(days=1)
             sem += 1
 
     else:  # año
-        # Últimos 12 meses (en hora española)
         meses = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
         data = []
         for m in range(12):
@@ -125,15 +115,28 @@ def get_user_history(user_id: int, period: str = "semana", db: Session = Depends
             year = now.year if (now.month - 11 + m) >= 1 else now.year - 1
             if month == 0: month = 12
             bucket = [p for p, p_spain in purchases_spain if p_spain.month == month and p_spain.year == year]
+            period_purchases.extend(bucket)
             data.append(make_entry(meses[month - 1], bucket))
 
-    # Ahorro: diferencia entre precio más caro y más barato en las compras del periodo
-    ahorro = round(total_spent * 0.08, 2) if (total_spent := sum(d["gasto"] for d in data)) > 0 else 0
+    # Gasto por supermercado — solo compras del periodo actual
+    sm_totals: dict = {}
+    if period_purchases:
+        period_ids = [p.id for p in period_purchases]
+        all_items = db.query(PurchaseItem).filter(PurchaseItem.purchase_id.in_(period_ids)).all()
+        sm_ids = {item.supermarket_id for item in all_items}
+        sm_map = {sm.id: sm.name for sm in db.query(Supermarket).filter(Supermarket.id.in_(sm_ids)).all()}
+        for item in all_items:
+            sm_name = sm_map.get(item.supermarket_id)
+            if sm_name:
+                sm_totals[sm_name] = sm_totals.get(sm_name, 0) + float(item.price or 0) * float(item.quantity or 1)
+
+    total_spent = sum(d["gasto"] for d in data)
+    ahorro = round(total_spent * 0.08, 2) if total_spent > 0 else 0
 
     return {
         "chart_data": data,
         "supermarket_totals": {k: round(v, 2) for k, v in sm_totals.items()},
-        "period_spent": round(sum(d["gasto"] for d in data), 2),
+        "period_spent": round(total_spent, 2),
         "ahorro_estimado": ahorro,
     }
 

@@ -62,7 +62,7 @@ Responde SOLO con JSON válido sin markdown ni texto extra:
 
 def pasada_mercadona(db):
     """Pasada 1: normaliza Mercadona por categorías"""
-    print("\n📦 PASADA 1: Normalizando Mercadona por categorías...")
+    print("\n PASADA 1: Normalizando Mercadona por categorías...")
     
     categorias = db.query(Category).all()
     total_genericos = 0
@@ -87,7 +87,7 @@ def pasada_mercadona(db):
         if not productos_cat:
             continue
 
-        print(f"  📂 {cat.name}: {len(productos_cat)} productos")
+        print(f"   {cat.name}: {len(productos_cat)} productos")
 
         # Procesar en lotes de 50
         BATCH = 50
@@ -144,24 +144,24 @@ def pasada_mercadona(db):
                 time.sleep(0.3)
 
             except Exception as e:
-                print(f"    ❌ Error en lote: {e}")
+                print(f"     Error en lote: {e}")
                 db.rollback()
                 continue
 
-    print(f"  ✅ Pasada 1 completada: {total_genericos} genéricos creados")
+    print(f"   Pasada 1 completada: {total_genericos} genéricos creados")
     return total_genericos
 
 
 def pasada_dia(db):
     """Pasada 2: cruza DIA contra genéricos existentes"""
-    print("\n🔄 PASADA 2: Cruzando DIA contra genéricos existentes...")
+    print("\n PASADA 2: Cruzando DIA contra genéricos existentes...")
 
     productos_dia = db.query(SupermarketProduct).filter(
         SupermarketProduct.supermarket_id == 2,
         SupermarketProduct.product_id == None
     ).all()
 
-    print(f"  📦 {len(productos_dia)} productos DIA a procesar")
+    print(f" {len(productos_dia)} productos DIA a procesar")
 
     # Obtener todos los genéricos existentes
     genericos = db.query(Product).all()

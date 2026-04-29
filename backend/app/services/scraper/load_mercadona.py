@@ -10,7 +10,7 @@ from app.db.connection import SessionLocal
 from app.models.all_models import Supermarket, Category, Product, SupermarketProduct
 
 def load_mercadona():
-    print("🚀 Iniciando carga de Mercadona...")
+    print(" Iniciando carga de Mercadona...")
     db = SessionLocal()
 
     try:
@@ -19,15 +19,15 @@ def load_mercadona():
         if not mercadona:
             print("❌ No se encontró Mercadona en la BD")
             return
-        print(f"✅ Supermercado: {mercadona.name}")
+        print(f" Supermercado: {mercadona.name}")
 
         # 2 — Leer el Excel
         BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
         excel_path = os.path.join(BASE_DIR, "mercadona_2026-02-04.xlsx")
-        print(f"📂 Leyendo: {excel_path}")
+        print(f" Leyendo: {excel_path}")
         df = pd.read_excel(excel_path)
-        print(f"📦 Total productos en Excel: {len(df)}")
-        print(f"📋 Columnas: {list(df.columns)}")
+        print(f" Total productos en Excel: {len(df)}")
+        print(f" Columnas: {list(df.columns)}")
 
         # 3 — Crear categorías únicas
         categorias_dict = {}
@@ -42,7 +42,7 @@ def load_mercadona():
                 db.commit()
                 db.refresh(cat)
             categorias_dict[cat_name] = cat.id
-        print(f"✅ Categorías procesadas: {len(categorias_dict)}")
+        print(f" Categorías procesadas: {len(categorias_dict)}")
 
         # 4 — Insertar productos
         insertados = 0

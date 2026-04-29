@@ -111,7 +111,7 @@ export function ProductPanel({ productId, onClose, onAddToCart, cartQuantity, zI
               <>
                 {/* Header con imagen */}
                 <div style={{ position: "relative" }}>
-                  <div style={{ width: "100%", height: 260, background: "#F5F0E8", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                  <div style={{ width: "100%", height: 260, background: "white", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
                     {product.image_url ? (
                       <img src={product.image_url} alt={product.name} style={{ width: "100%", height: "100%", objectFit: "contain", padding: "16px" }} />
                     ) : (

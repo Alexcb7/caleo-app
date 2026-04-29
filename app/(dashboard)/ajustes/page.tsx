@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import {
   User, Mail, Bell, ShoppingCart, Wallet, LogOut, Check,
   Calendar, CalendarDays, CalendarRange, BarChart3,
-  BellRing, BellOff, Clock, Pencil, X,
+  BellRing, BellOff, Clock, Pencil, X, Lock,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -130,7 +130,17 @@ export default function AjustesPage() {
   const [savedBudget, setSavedBudget] = useState(false);
   const [editingBudgets, setEditingBudgets] = useState(false);
 
-  const [notifs, setNotifs] = useState({ ofertas: true, presupuesto: true, comparaciones: false });
+  const [notifs, setNotifs] = useState<{ ofertas: boolean; presupuesto: boolean; comparaciones: boolean }>(() => {
+    try {
+      const stored = localStorage.getItem("notifs");
+      if (stored) return JSON.parse(stored);
+    } catch {}
+    return { ofertas: true, presupuesto: true, comparaciones: false };
+  });
+
+  useEffect(() => {
+    localStorage.setItem("notifs", JSON.stringify(notifs));
+  }, [notifs]);
 
   useEffect(() => {
     const stored = localStorage.getItem("user");
@@ -174,9 +184,9 @@ export default function AjustesPage() {
       await fetch(`${API_URL}/ajustes/user/${user.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email }),
+        body: JSON.stringify({ name }),
       });
-      localStorage.setItem("user", JSON.stringify({ ...user, name, email }));
+      localStorage.setItem("user", JSON.stringify({ ...user, name }));
       setSaved(true);
       setEditingProfile(false);
       setTimeout(() => setSaved(false), 2000);
@@ -273,7 +283,14 @@ export default function AjustesPage() {
                 <>
                   <div className="profile-form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 }}>
                     <StyledInput label="Nombre" icon={<User size={16} color="#6B7A3A" />} value={name} onChange={setName} placeholder="Tu nombre" />
-                    <StyledInput label="Email" icon={<Mail size={16} color="#6B7A3A" />} value={email} onChange={setEmail} type="email" placeholder="tu@email.com" />
+                    <div style={{ marginBottom: 16 }}>
+                      <label style={{ fontSize: "0.74rem", fontWeight: 700, color: "#8C7B6B", fontFamily: "system-ui", display: "block", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>Email</label>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, border: "1.5px solid #E8DFD0", borderRadius: 12, padding: "10px 14px", background: "#F0EDE8" }}>
+                        <span style={{ flexShrink: 0, opacity: 0.4 }}><Mail size={16} color="#6B7A3A" /></span>
+                        <span style={{ flex: 1, fontSize: "0.92rem", color: "#8C7B6B", fontFamily: "system-ui" }}>{email}</span>
+                        <Lock size={13} color="#B8A06A" style={{ flexShrink: 0 }} />
+                      </div>
+                    </div>
                   </div>
                   <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={handleSaveProfile} disabled={saving}
                     style={{ padding: "10px 24px", background: saved ? "#4A6B2A" : "#6B7A3A", color: "white", border: "none", borderRadius: 11, fontFamily: "system-ui", fontWeight: 700, fontSize: "0.88rem", cursor: saving ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 7, transition: "background 0.2s" }}>
@@ -407,8 +424,8 @@ export default function AjustesPage() {
             </div>
             <div className="sm-cards" style={{ flex: 1, display: "flex", gap: 12 }}>
               {[
-                { name: "Mercadona", color: "#00A650", active: true },
-                { name: "Día",       color: "#E31837", active: true },
+                { name: "Mercadona", color: "#6B7A3A", active: true },
+                { name: "Día",       color: "#6B7A3A", active: true },
               ].map(sm => (
                 <div key={sm.name} style={{ flex: 1, display: "flex", alignItems: "center", gap: 12, padding: "10px 16px", background: `${sm.color}0D`, border: `1.5px solid ${sm.color}28`, borderRadius: 12 }}>
                   <div style={{ width: 32, height: 32, borderRadius: 9, background: `${sm.color}18`, border: `1.5px solid ${sm.color}35`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>

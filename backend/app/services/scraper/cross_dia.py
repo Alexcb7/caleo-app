@@ -56,7 +56,7 @@ def similitud(a, b):
     return SequenceMatcher(None, a_clean, b_clean).ratio()
 
 def cross_dia():
-    print("🔄 Cruzando productos DIA con genéricos (sin LLM)...")
+    print(" Cruzando productos DIA con genéricos (sin LLM)...")
     db = SessionLocal()
 
     try:
@@ -64,10 +64,10 @@ def cross_dia():
             SupermarketProduct.supermarket_id == 2,
             SupermarketProduct.product_id == None
         ).all()
-        print(f"📦 Productos DIA a cruzar: {len(productos_dia)}")
+        print(f" Productos DIA a cruzar: {len(productos_dia)}")
 
         genericos = db.query(Product).all()
-        print(f"📋 Genéricos disponibles: {len(genericos)}")
+        print(f" Genéricos disponibles: {len(genericos)}")
 
         cruzados = 0
         no_cruzados = 0
@@ -98,15 +98,15 @@ def cross_dia():
 
             if (i + 1) % 500 == 0:
                 db.commit()
-                print(f"  💾 {i+1}/{len(productos_dia)} procesados... ({cruzados} cruzados)")
+                print(f"   {i+1}/{len(productos_dia)} procesados... ({cruzados} cruzados)")
 
         db.commit()
 
-        print(f"\n📊 RESULTADO:")
-        print(f"  ✅ Cruzados: {cruzados}")
-        print(f"  ⚠️  Sin cruzar: {no_cruzados}")
-        print(f"  📈 % cruzado: {round(cruzados/len(productos_dia)*100, 1)}%")
-        print("🎉 Completado")
+        print(f"\n RESULTADO:")
+        print(f"   Cruzados: {cruzados}")
+        print(f"    Sin cruzar: {no_cruzados}")
+        print(f"   % cruzado: {round(cruzados/len(productos_dia)*100, 1)}%")
+        print(" Completado")
 
     except Exception as e:
         db.rollback()

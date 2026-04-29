@@ -72,6 +72,7 @@ export default function CompraPage() {
   const [budget, setBudget] = useState("");
 
   const searchTimeout = useRef<NodeJS.Timeout | null>(null);
+  const searchAbort = useRef<AbortController | null>(null);
   const searchRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -110,14 +111,18 @@ export default function CompraPage() {
   }, [query, selectedCategory]);
 
   const searchProducts = async () => {
+    if (searchAbort.current) searchAbort.current.abort();
+    searchAbort.current = new AbortController();
     setLoading(true);
     try {
       const params = new URLSearchParams();
       if (query) params.append("q", query);
       if (selectedCategory) params.append("category_id", String(selectedCategory.id));
-      const res = await fetch(`${API_URL}/products/search?${params}`);
+      const res = await fetch(`${API_URL}/products/search?${params}`, { signal: searchAbort.current.signal });
       setProducts(await res.json());
-    } catch {}
+    } catch (e: any) {
+      if (e?.name === "AbortError") return;
+    }
     setLoading(false);
   };
 
@@ -493,7 +498,7 @@ export default function CompraPage() {
                   </div>
                 )}
                 {/* Imagen clickable */}
-                <div onClick={() => setSelectedProductId(product.id)} style={{ width: "100%", height: 150, borderRadius: 10, background: "#F5F0E8", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", cursor: "pointer", flexShrink: 0 }}>
+                <div onClick={() => setSelectedProductId(product.id)} style={{ width: "100%", height: 150, borderRadius: 10, background: "white", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", cursor: "pointer", flexShrink: 0 }}>
                   {product.image_url ? (
                     <img src={product.image_url} alt={product.name} style={{ width: "100%", height: "100%", objectFit: "contain", padding: 8 }} onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
                   ) : (
@@ -501,7 +506,7 @@ export default function CompraPage() {
                   )}
                 </div>
                 {/* Nombre clickable */}
-                <p onClick={() => setSelectedProductId(product.id)} style={{ fontSize: "0.84rem", fontWeight: 600, color: "#3D2B1F", fontFamily: "system-ui", margin: 0, lineHeight: 1.35, minHeight: "2.7em", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", cursor: "pointer", flex: 1 }}>
+                <p onClick={() => setSelectedProductId(product.id)} style={{ fontSize: "0.88rem", fontWeight: 600, color: "#3D2B1F", fontFamily: "var(--font-sans)", margin: 0, lineHeight: 1.45, letterSpacing: "-0.01em", minHeight: "2.7em", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", cursor: "pointer", flex: 1 }}>
                   {product.name}
                 </p>
                 {qty === 0 ? (

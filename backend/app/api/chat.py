@@ -19,7 +19,7 @@ class ChatRequest(BaseModel):
     messages: List[ChatMessage]
     user_id: int
 
-def get_context(user_id: int, db: Session) -> str:
+def get_context(user_id: int, db: Session, user_message: str = "") -> str:
     context_parts = []
 
     # Ofertas activas
@@ -72,21 +72,45 @@ def get_context(user_id: int, db: Session) -> str:
     except:
         pass
 
-    # Muestra de productos con precios reales
+    # Búsqueda dinámica basada en el mensaje del usuario
+    keywords = [w.lower() for w in user_message.split() if len(w) > 3]
+    if keywords:
+        try:
+            conditions = " OR ".join([f"LOWER(p.name) LIKE :kw{i}" for i, _ in enumerate(keywords)])
+            params = {f"kw{i}": f"%{kw}%" for i, kw in enumerate(keywords)}
+            resultados = db.execute(text(f"""
+                SELECT p.name, sp.price, sp.original_price, sp.is_offer, s.name as supermarket, c.name as category
+                FROM supermarket_products sp
+                JOIN products p ON p.id = sp.product_id
+                JOIN supermarkets s ON s.id = sp.supermarket_id
+                JOIN categories c ON c.id = p.category_id
+                WHERE sp.in_stock = true AND ({conditions})
+                ORDER BY p.name ASC, sp.price ASC
+                LIMIT 60
+            """), params).fetchall()
+            if resultados:
+                context_parts.append("\nPRODUCTOS ENCONTRADOS RELACIONADOS CON LA CONSULTA:")
+                for p in resultados:
+                    oferta = " (EN OFERTA)" if p.is_offer else ""
+                    precio_original = f" antes {float(p.original_price):.2f}€" if p.is_offer and p.original_price else ""
+                    context_parts.append(f"- {p.name} ({p.category}): {float(p.price):.2f}€ en {p.supermarket}{precio_original}{oferta}")
+        except:
+            pass
+
+    # Muestra general de productos (fallback) — sin DISTINCT para ver todos los supers
     try:
         productos = db.execute(text("""
-            SELECT DISTINCT ON (p.name)
-                p.name, sp.price, s.name as supermarket, c.name as category
+            SELECT p.name, sp.price, s.name as supermarket, c.name as category
             FROM supermarket_products sp
             JOIN products p ON p.id = sp.product_id
             JOIN supermarkets s ON s.id = sp.supermarket_id
             JOIN categories c ON c.id = p.category_id
             WHERE sp.in_stock = true
-            ORDER BY p.name, sp.price ASC
+            ORDER BY p.name ASC, sp.price ASC
             LIMIT 40
         """)).fetchall()
         if productos:
-            context_parts.append("\nPRODUCTOS DISPONIBLES EN LA APP (precio más barato):")
+            context_parts.append("\nMUESTRA GENERAL DE PRODUCTOS:")
             for p in productos:
                 context_parts.append(f"- {p.name} ({p.category}): {float(p.price):.2f}€ en {p.supermarket}")
     except:
@@ -103,37 +127,53 @@ Tu personalidad:
 - Hablas con cariño, usas expresiones como "mira chaval", "te lo digo yo", "en mis tiempos", "hijo/hija"
 - Eres directo y práctico, sin rodeos, pero siempre amable
 - Te gusta presumir de que sabes cocinar de toda la vida y conoces recetas tradicionales
-- A veces haces comentarios graciosos sobre los precios ("¡esto es un robo!" o "qué tiempos aquellos cuando el aceite costaba...")
-- Pero cuando hay que ser serio y útil, lo eres
+- A veces haces comentarios graciosos sobre los precios ("esto es un robo!" o "que tiempos aquellos cuando el aceite costaba...")
+- Pero cuando hay que ser serio y util, lo eres
 
 Tus capacidades:
-1. PRECIOS Y PRODUCTOS: Conoces todos los productos y precios de Mercadona y DIA que aparecen en los datos. Siempre dices en qué supermercado es más barato.
+1. PRECIOS Y PRODUCTOS: Conoces todos los productos y precios de Mercadona y DIA que aparecen en los datos. Siempre dices en que supermercado es mas barato.
 
-2. RECETAS: Eres un experto cocinero. Si alguien quiere hacer una receta, le dices los ingredientes, las cantidades, y buscas en los datos si hay alguno en oferta. Por ejemplo: "para una paella para 8 personas necesitas..."
+2. RECETAS: Eres un experto cocinero. Si alguien quiere hacer una receta, le dices los ingredientes, las cantidades, y buscas en los datos si hay alguno en oferta.
 
-3. LISTAS EQUILIBRADAS: Puedes hacer listas de la compra completas y equilibradas para X personas con X presupuesto, usando los precios reales de la app y priorizando las ofertas.
+3. LISTAS DE LA COMPRA: Cuando hagas una lista de la compra, SIEMPRE agrupa los productos por estas categorias usando exactamente estos encabezados con emoji:
 
-4. AYUDA CON LA APP: Conoces perfectamente cómo funciona Caleo y puedes explicar al usuario cómo usar cada función:
+🥦 Frutas y Verduras
+🥩 Carne
+🐟 Pescado y Marisco
+🥛 Lacteos y Huevos
+🥖 Pan y Bolleria
+🥫 Conservas y Enlatados
+🧴 Limpieza e Higiene
+🍝 Pasta, Arroz y Legumbres
+🧃 Bebidas
+🧂 Aceites, Salsas y Condimentos
+🛒 Otros
+
+Formato de cada producto dentro de su categoria:
+- Nombre del producto: cantidad — X.XX€ en Supermercado
+
+Si un producto no tiene precio, ponlo sin precio y sin ningun comentario al respecto.
+Al final de la lista pon el coste estimado total.
+
+4. AYUDA CON LA APP: Conoces perfectamente como funciona Caleo y puedes explicar al usuario como usar cada funcion:
    - La Compra: busca productos, elige modo Super Ahorro o Normal, añade al carrito y compara
    - Mis Listas: crea listas personalizadas con emoji y nombre
    - Ofertas: ve las mejores ofertas filtradas por supermercado
    - Mis Compras: historial de todas tus compras completadas
    - Ajustes: configura tu presupuesto diario/semanal/mensual
 
-5. ANÁLISIS DE GASTO: Puedes analizar el historial de compras del usuario y darle consejos para ahorrar más.
+5. ANALISIS DE GASTO: Puedes analizar el historial de compras del usuario y darle consejos para ahorrar mas.
 
-Reglas importantes:
+Reglas de formato — MUY IMPORTANTES:
 - Responde SIEMPRE en español
-- NO uses emojis bajo ningún concepto
+- NUNCA uses caracteres de markdown: nada de **, *, #, ##, ___, >, ni similares
+- NUNCA uses emojis salvo en los encabezados de categoria de las listas de la compra
+- Usa solo texto plano, guiones (-) para listas, y saltos de linea para separar secciones
 - Usa los datos reales del contexto cuando los tengas
-- Si un producto no está en los datos, NO lo menciones ni hagas comentarios sobre ello. Simplemente ponlo en la lista sin precio
-- Para recetas, presenta los ingredientes como una lista clara con guiones (-), incluyendo cantidad y precio si lo tienes
-- Formato de lista de ingredientes: "- Nombre del producto: cantidad — X.XX€ en Supermercado"
-- Si no tienes el precio de un ingrediente, ponlo sin precio, sin comentarios
-- Al final de una receta o lista, pon siempre el coste estimado total con los productos que sí tienes precio
+- Si un producto no esta en los datos, ponlo en la lista sin precio y sin comentarios
 - Sé conciso y ordenado — usa secciones claras cuando la respuesta lo requiera
-- No más de 5 párrafos por respuesta
-- Nunca uses paréntesis para hacer aclaraciones sobre la disponibilidad de productos
+- No mas de 5 parrafos por respuesta salvo que sea una lista de la compra o receta
+- Nunca uses parentesis para hacer aclaraciones sobre la disponibilidad de productos
 
 {context}"""
 
@@ -141,7 +181,12 @@ Reglas importantes:
 @router.post("/message")
 def chat_message(data: ChatRequest, db: Session = Depends(get_db)):
     try:
-        context = get_context(data.user_id, db)
+        # Coge el último mensaje del usuario para la búsqueda dinámica
+        last_user_message = next(
+            (m.content for m in reversed(data.messages) if m.role == "user"), ""
+        )
+
+        context = get_context(data.user_id, db, last_user_message)
         system = SYSTEM_PROMPT.replace(
             "{context}",
             f"\nDATOS ACTUALES DE CALEO:\n{context}" if context else ""
@@ -165,6 +210,6 @@ def chat_message(data: ChatRequest, db: Session = Depends(get_db)):
 
     except Exception as e:
         return {
-            "content": "Ay hijo, que me ha fallado la conexión. Inténtalo otra vez en un momento 😅",
+            "content": "Ay hijo, que me ha fallado la conexion. Intentalo otra vez en un momento.",
             "model": "error"
         }

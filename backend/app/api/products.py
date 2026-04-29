@@ -10,33 +10,42 @@ router = APIRouter(prefix="/products", tags=["products"])
 
 @router.get("/search")
 def search_products(q: str = Query(""), category_id: Optional[int] = None, db: Session = Depends(get_db)):
-    query = db.query(Product)
+    filters = []
+    params: dict = {}
     if q:
-        query = query.filter(Product.name.ilike(f"%{q}%"))
+        filters.append("p.name ILIKE :q")
+        params["q"] = f"%{q}%"
     if category_id:
-        query = query.filter(Product.category_id == category_id)
-    products = query.limit(50).all()
-    result = []
-    for p in products:
-        sp = db.query(SupermarketProduct).filter(
-            SupermarketProduct.product_id == p.id
-        ).order_by(SupermarketProduct.price).first()
-        sm = db.query(Supermarket).filter(Supermarket.id == sp.supermarket_id).first() if sp else None
-        result.append({
-            "id": p.id, "name": p.name, "brand": p.brand,
-            "unit_type": p.unit_type, "image_url": p.image_url,
-            "category_id": p.category_id,
-            "min_price": float(sp.price) if sp else None,
-            "supermarket": sm.name if sm else None,
-            "is_offer": db.query(SupermarketProduct).filter(
-                SupermarketProduct.product_id == p.id,
-                SupermarketProduct.is_offer == True
-            ).first() is not None,
-            "supermarkets_count": db.query(SupermarketProduct.supermarket_id).filter(
-                SupermarketProduct.product_id == p.id
-            ).distinct().count(),
-        })
-    return result
+        filters.append("p.category_id = :category_id")
+        params["category_id"] = category_id
+    where = ("WHERE " + " AND ".join(filters)) if filters else ""
+
+    sql = text(f"""
+        SELECT
+            p.id, p.name, p.brand, p.unit_type, p.image_url, p.category_id,
+            MIN(sp.price)                        AS min_price,
+            COUNT(DISTINCT sp.supermarket_id)    AS supermarkets_count,
+            BOOL_OR(sp.is_offer)                 AS is_offer
+        FROM products p
+        LEFT JOIN supermarket_products sp ON sp.product_id = p.id
+        {where}
+        GROUP BY p.id, p.name, p.brand, p.unit_type, p.image_url, p.category_id
+        ORDER BY p.name
+        LIMIT 50
+    """)
+
+    rows = db.execute(sql, params).fetchall()
+    return [
+        {
+            "id": r.id, "name": r.name, "brand": r.brand,
+            "unit_type": r.unit_type, "image_url": r.image_url,
+            "category_id": r.category_id,
+            "min_price": float(r.min_price) if r.min_price is not None else None,
+            "supermarkets_count": r.supermarkets_count or 0,
+            "is_offer": bool(r.is_offer),
+        }
+        for r in rows
+    ]
 
 @router.get("/categories")
 def get_categories(db: Session = Depends(get_db)):
