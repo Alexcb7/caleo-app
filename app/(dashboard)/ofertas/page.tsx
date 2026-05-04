@@ -216,7 +216,7 @@ export default function OfertasPage() {
               {/* Imagen clickable */}
               <div
                 onClick={() => setSelectedProductId(oferta.product_id)}
-                style={{ width: "100%", height: 150, borderRadius: 10, background: "#F5F0E8", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", cursor: "pointer", flexShrink: 0 }}
+                style={{ width: "100%", height: 150, borderRadius: 10, background: "white", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", cursor: "pointer", flexShrink: 0 }}
               >
                 {oferta.image_url ? (
                   <img src={oferta.image_url} alt={oferta.product_name} style={{ width: "100%", height: "100%", objectFit: "contain", padding: 8 }} onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />

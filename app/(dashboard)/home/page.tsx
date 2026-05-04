@@ -12,7 +12,7 @@ import {
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 type User = { id: number; name: string; email: string };
-type Stats = { total_spent: number; total_purchases: number; monthly_spent: number; weekly_spent: number; budgets: Record<string, number> };
+type Stats = { total_spent: number; total_purchases: number; daily_spent: number; weekly_spent: number; monthly_spent: number; yearly_spent: number; budgets: Record<string, number> };
 type History = { chart_data: { label: string; gasto: number; count: number; ticket_medio: number }[]; supermarket_totals: Record<string, number>; period_spent: number; ahorro_estimado: number; _fetchedAt?: number };
 type Oferta = { id: number; product_name: string; image_url: string; supermarket: string; price: number; original_price: number; category: string };
 type Period = "dia" | "semana" | "mes" | "año";
@@ -338,10 +338,10 @@ export default function HomePage() {
       {/* Presupuestos */}
       {stats && stats.budgets && Object.values(stats.budgets).some(v => v > 0) && (() => {
         const budgetItems: { key: string; label: string; icon: React.ElementType; spent: number; limit: number }[] = [
-          { key: "daily",   label: "Diario",   icon: Calendar,      spent: 0,                      limit: stats.budgets.daily   || 0 },
-          { key: "weekly",  label: "Semanal",  icon: CalendarDays,  spent: stats.weekly_spent || 0, limit: stats.budgets.weekly  || 0 },
+          { key: "daily",   label: "Diario",   icon: Calendar,      spent: stats.daily_spent || 0,   limit: stats.budgets.daily   || 0 },
+          { key: "weekly",  label: "Semanal",  icon: CalendarDays,  spent: stats.weekly_spent || 0,  limit: stats.budgets.weekly  || 0 },
           { key: "monthly", label: "Mensual",  icon: CalendarRange, spent: stats.monthly_spent || 0, limit: stats.budgets.monthly || 0 },
-          { key: "yearly",  label: "Anual",    icon: Wallet,        spent: stats.total_spent || 0,  limit: stats.budgets.yearly  || 0 },
+          { key: "yearly",  label: "Anual",    icon: Wallet,        spent: stats.yearly_spent || 0,  limit: stats.budgets.yearly  || 0 },
         ].filter(b => b.limit > 0);
 
         const cols = budgetItems.length === 1 ? "1fr" : budgetItems.length === 2 ? "repeat(2, 1fr)" : budgetItems.length === 3 ? "repeat(3, 1fr)" : "repeat(4, 1fr)";

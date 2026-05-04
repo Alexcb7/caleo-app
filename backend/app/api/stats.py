@@ -36,15 +36,22 @@ def get_user_stats(user_id: int, db: Session = Depends(get_db)):
     start_of_month = now.replace(day=1, hour=0, minute=0, second=0)
     start_of_week = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0)
 
+    start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    start_of_year = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    daily_spent = sum(float(p.total_price or 0) for p in purchases if _to_spain(p.created_at) >= start_of_day)
     monthly_spent = sum(float(p.total_price or 0) for p in purchases if _to_spain(p.created_at) >= start_of_month)
     weekly_spent = sum(float(p.total_price or 0) for p in purchases if _to_spain(p.created_at) >= start_of_week)
+    yearly_spent = sum(float(p.total_price or 0) for p in purchases if _to_spain(p.created_at) >= start_of_year)
     budgets = db.query(UserBudget).filter(UserBudget.user_id == user_id).all()
 
     return {
         "total_spent": round(total_spent, 2),
         "total_purchases": len(purchases),
-        "monthly_spent": round(monthly_spent, 2),
+        "daily_spent": round(daily_spent, 2),
         "weekly_spent": round(weekly_spent, 2),
+        "monthly_spent": round(monthly_spent, 2),
+        "yearly_spent": round(yearly_spent, 2),
         "budgets": {b.period: float(b.amount) for b in budgets},
     }
 
